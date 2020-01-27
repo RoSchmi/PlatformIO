@@ -35,7 +35,7 @@ const uint16_t ThresholdPreset = 5;
 // by this ThresholdDivisor. If new values deviate by more than this threshold
 // from the average values before, a change of the state is assumed 
 // (2 = half of the span, 3 = third of the span, 4 = 25% of the span)
-const uint16_t ThresholdDivisor = 3;
+const uint16_t ThresholdDivisor = 4;
 
 QTRSensors qtr;
 ReflManager reflManager(ThresholdPreset, ThresholdDivisor);
