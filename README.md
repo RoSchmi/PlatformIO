@@ -8,4 +8,4 @@ Testing Pololu Reflectance Sensor on Feather M0. Trying to get "On" and "Off" st
 Simple Blinky App with Settings for Debugging with Segger J-Link Emulator
 
 ### Feather_M0_SDM530MT_Modbus
-Reading Voltage from SDM530MT Smartmeder via Modbus - Feather M0 Board - (Debugging with Segger J-Link Emulator)
+Reading Voltage from SDM530MT Smartmeter via Modbus - Feather M0 Board - (Debugging with Segger J-Link Emulator)
