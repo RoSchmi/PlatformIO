@@ -2,7 +2,6 @@
 #include <inttypes.h>
 #include <ModbusRtu.h>
 
-
 Read_2_InputRegisters::Read_2_InputRegisters(modbus_t pDatagram, uint16_t pInputRegAddress)
 {
     inputRegAddress = pInputRegAddress;  
@@ -32,7 +31,7 @@ void Read_2_InputRegisters::setReleaseTimespan(uint32_t pReleaseTimespan)
     releaseTime_Ms = millis() + releaseTimespan_Ms;
 }
 
-regsReturnStruct Read_2_InputRegisters::get_2_InputRegisters(uint8_t pSlaveAddress, uint32_t pReleaseTimespan)
+regsReturnStruct Read_2_InputRegisters::get_2_InputRegisters(uint8_t pSlaveAddress, uint32_t pReleaseTimespan, ForceState pForceState)
 {
     regsRetStruct.HighReg = 0;
     regsRetStruct.LowReg = 0;
@@ -40,7 +39,7 @@ regsReturnStruct Read_2_InputRegisters::get_2_InputRegisters(uint8_t pSlaveAddre
     regsRetStruct.ErrorCode = ERR_LOC_NOT_RELEASED;
     releaseTimespan_Ms = pReleaseTimespan;
         
-    if (long(millis() - releaseTime_Ms) > 0)
+    if ((long(millis() - releaseTime_Ms) > 0) || pForceState == ForceState::IgnoreReleaseTime)
     {       
         datagramLocal.u8id = pSlaveAddress; // device address 
         datagramLocal.u8fct = 4;

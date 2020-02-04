@@ -31,6 +31,12 @@ enum ERR_LOC_LIST : int16_t
     ERR_LOC_BEGIN_FUNCTION_NOT_EXECUTED = -10
 };
 
+enum ForceState
+{
+    IgnoreReleaseTime,
+    RespectReleaseTime
+};
+
 class Read_2_InputRegisters
     { 
     public:
@@ -39,7 +45,7 @@ class Read_2_InputRegisters
 
         void begin(Modbus pModbus, uint32_t pInitialReleaseTimespan_Ms);
        
-        regsReturnStruct get_2_InputRegisters(uint8_t pSlaveAddress, uint32_t pReleaseTimespan);
+        regsReturnStruct get_2_InputRegisters(uint8_t pSlaveAddress, uint32_t pReleaseTimespan, ForceState pForceState);
 
         bool isReleased();
 

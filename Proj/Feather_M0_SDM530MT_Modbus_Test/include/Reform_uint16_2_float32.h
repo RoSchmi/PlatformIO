@@ -25,10 +25,11 @@ typedef struct
 }
 int16_2_float_function_result;
 
+
     class Reform_uint16_2_float32
     { 
     public:
         
-        //float reform_uint16_2_float32(uint16_t u1, uint16_t u2);
+        //float reform_uint16_2_float32(uint16_t up1, uint16_t u2); 
         int16_2_float_function_result reform_uint16_2_float32(uint16_t u1, uint16_t u2);
     };
