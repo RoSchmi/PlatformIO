@@ -14,3 +14,8 @@ Reading Voltage from SDM530MT Smartmeter via Modbus - Feather M0 Board - (Debugg
 Reading Power and Work from SDM530MT Smartmeter via Modbus - Feather M0 Board - (Debugging with Segger J-Link Emulator)
 Using a dedicated Class to read two Input Registers (as needed by the Smartmeter). More easily understandable as the
 version above
+
+### Feather_Rfm69_Power_a_Heating_Survey
+Reads data (Current, Power, Work) from a Eastron SDM530-MT Smartmeter and the On/Off state of a pump
+and transmits these data via Rfm69 radio transmission to an Internet Gateway (GHI FEZ Spider Board)
+which stores the data in the Cloud (Azure Storage Tables)
