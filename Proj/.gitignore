@@ -1,0 +1,34 @@
+# .gitignore
+# Erstmal alles ignorieren
+*
+!.gitignore
+
+## Only include this folders
+!/Feather_M0_Reflectance_Sensor_Test/
+!/Feather_M0_Reflectance_Sensor_Test/**
+
+!/Feather_M0_Blinky/
+!/Feather_M0_Blinky/**
+
+!/Feather_M0_Debugging_01/
+!/Feather_M0_Debugging_01/**
+
+!/Feather_M0_SDM530MT_Modbus/
+!/Feather_M0_SDM530MT_Modbus/**
+
+!/Feather_M0_SDM530MT_Modbus_Test/
+!/Feather_M0_SDM530MT_Modbus_Test/**
+
+!/Feather_Rfm69_Power_a_Heating_Survey/
+!/Feather_Rfm69_Power_a_Heating_Survey/**
+
+
+
+
+
+
+
+
+
+
+

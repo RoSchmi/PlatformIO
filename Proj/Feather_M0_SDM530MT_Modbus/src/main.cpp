@@ -56,8 +56,8 @@ Uart Serial2(&sercom1, PIN_SERIAL2_RX, PIN_SERIAL2_TX, PAD_SERIAL2_RX, PAD_SERIA
  */
 Modbus host(0, A4); // this is host and RS-232 or USB-FTDI
 
-// ModbusSerial<decltype(Serial1)> mySerial(&Serial1);
- ModbusSerial<decltype(Serial2)> mySerial(&Serial2);
+ModbusSerial<decltype(Serial1)> mySerial(&Serial1);
+ //ModbusSerial<decltype(Serial2)> mySerial(&Serial2);
 
 void setup() {
   // put your setup code here, to run once:
