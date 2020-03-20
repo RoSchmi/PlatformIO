@@ -38,9 +38,7 @@ void DataContainer::SetNewValues(uint32_t pActSampleTime, float pActCurrent, flo
     }
     else
     {
-        SummedCurrents += pActCurrent * (pActSampleTime - LastSampleTime_Ms);
-        // volatile int timeDiff = pActSampleTime - LastSampleTime_Ms;
-        // LastSampleTime_Ms = pActSampleTime;
+        SummedCurrents += pActCurrent * (pActSampleTime - LastSampleTime_Ms);       
         ActAverageCurrent = SummedCurrents / (pActSampleTime - LastSendTime_Ms);
         SummedPower += pActPower * (pActSampleTime - LastSampleTime_Ms);
         LastSampleTime_Ms = pActSampleTime;
@@ -91,8 +89,7 @@ SampleValues DataContainer::getSampleValuesAndReset()
     sampleValues.AveragePower = ActAveragePower;
     sampleValues.ImportWork = ActImportWorkUint32;
     sampleValues.StartTime_Ms = LastSendTime_Ms;
-    sampleValues.EndTime_Ms = ActSampleTime_Ms;
-    // volatile int timeDiff = ActSampleTime_Ms - LastSendTime_Ms;
+    sampleValues.EndTime_Ms = ActSampleTime_Ms;  
     LastSendTime_Ms = ActSampleTime_Ms;
     SummedCurrents = 0;
     SummedPower = 0;

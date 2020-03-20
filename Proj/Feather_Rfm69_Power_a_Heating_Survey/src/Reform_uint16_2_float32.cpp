@@ -2,9 +2,6 @@
 #include <stdint.h>
 #include <math.h>
 
-
-
-
 int16_2_float_function_result reform_uint16_2_float32(uint16_t pU1, uint16_t pU2)
 {
     float result = 0; 

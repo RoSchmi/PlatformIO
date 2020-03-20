@@ -1,6 +1,23 @@
 // Version for SDM530MT Modbus HeatingCurrentSurvey Sensor Version 1.0
 // Mainboard Feather M0 Rfm69 433 MHz
 
+// Copyright RoSchmi, 2020. License: GNU General Public License
+
+// Debugging hints:
+// https://community.platformio.org/t/problems-starting-debug-session-with-jlink-on-feather-m0/12291
+//
+
+// For debugging The bootloader must be overwritten (Fuse set to 0 Bytes- see link)
+// For debugging with PlatformIO The file: adafruit_feather_m0_no_bootloader.json must be
+// in folder 'boards'
+// platformio.ini must contain the line: board = adafruit_feather_m0_no_bootloader
+
+// For 'Release' Version
+// platformio.ini must contain the line: board = adafruit_feather_m0
+
+
+// This Application is an adaption from Felix Rusu's RFM69 library
+
 /* RFM69 library and code by Felix Rusu - felix@lowpowerlab.com
 // Get libraries at: https://github.com/LowPowerLab/
 // Make sure you adjust the settings in the configuration section below !!!
@@ -43,7 +60,6 @@
 #include "Reform_uint16_2_float32.h"
 #include "Read_2_InputRegisters.h"
 #include "DataContainer.h"
-
 
 //#define DebugPrint
 
@@ -218,7 +234,6 @@
 #define RF_BITRATELSB_55555           0x40
 #define RF_BITRATEMSB_200KBPS         0x00
 #define RF_BITRATELSB_200KBPS         0xa0
-
 
 // RegFdev - frequency deviation (Hz)
 #define RF_FDEVMSB_2000             0x00
@@ -436,16 +451,13 @@
 #define RF_FRFMID_928             0x00
 #define RF_FRFLSB_928             0x00
 
-
 // RegOsc1
 #define RF_OSC1_RCCAL_START       0x80
 #define RF_OSC1_RCCAL_DONE        0x40
 
-
 // RegAfcCtrl
 #define RF_AFCCTRL_LOWBETA_OFF    0x00  // Default
 #define RF_AFCCTRL_LOWBETA_ON     0x20
-
 
 // RegLowBat
 #define RF_LOWBAT_MONITOR         0x10
@@ -460,7 +472,6 @@
 #define RF_LOWBAT_TRIM_2045       0x05
 #define RF_LOWBAT_TRIM_2116       0x06
 #define RF_LOWBAT_TRIM_2185       0x07
-
 
 // RegListen1
 #define RF_LISTEN1_RESOL_64       0x50
@@ -1138,9 +1149,9 @@
 #define RF69_MODE_TX            4 // TX MODE
 
 #define RF69_CSMA_LIMIT_MS 1000
-#define RF69_TX_LIMIT_MS   1000
+#define RF69_TX_LIMIT_MS   1000      // for sendig message: time in ms to wait for free environment to send
 // Changed by RoSchmi from 40 to 150
-#define ACK_CSMA_LIMIT_MS   200
+#define ACK_CSMA_LIMIT_MS   200     // for sending ACK: time in ms to wait for free environment to send
 
 #define RF69_MAX_DATA_LEN       61 // to take advantage of the built in AES/CRC we want to limit the frame siz 
 
@@ -1202,7 +1213,6 @@
 unsigned long seed;
 int16_t packetnum;  // packet counter, we increment per xmission, 
 
-//RFM69 radio = RFM69(RFM69_CS, RFM69_IRQ, IS_RFM69HCW, RFM69_IRQN);
 uint8_t _slaveSelectPin;
 uint8_t _interruptPin;
 uint8_t _interruptNum;
@@ -1237,9 +1247,6 @@ int16_t _ackRSSI;         // this contains the RSSI our destination Ack'd back t
 int16_t _targetRSSI;     // if non-zero then this is the desired end point RSSI for our transmission
 uint8_t _transmitLevel;  // saved powerLevel in case we do auto power adjustment, this value gets dithered
 
-
-//RFM69* RFM69::selfPointer;
-
 static volatile bool _inISR;
 
 uint8_t _initResult;
@@ -1258,11 +1265,8 @@ int maxRepeatSend = 7;   // if no sending success, sending is repeated maxRepeat
 
 volatile int8_t lastMode;
 
-volatile bool firstPass = true;
-
 int analogPin = 1;
 
-//const int radioPacketLength = 23;
 const int radioPacketLength = 27;
 union Radiopackets
 {
@@ -1271,9 +1275,6 @@ union Radiopackets
 };
 
 Radiopackets packets; 
-
-//char radiopacket[23];
-
 
 volatile int16_t sendInfo = 0;
 
@@ -1360,6 +1361,12 @@ regsReturnStruct regsRetStruct_2;
 
 unsigned long u32wait;
 
+bool skipModbusFunctions = false;
+uint16_t skipCounter = 0;
+
+uint16_t Pin11Switchcounter = 0;     // variable only needed for tests
+bool digital_11_State = false;
+
 // Serial2 pin and pad definitions (in Arduino files Variant.h & Variant.cpp)
 /*
 #define PIN_SERIAL2_RX       (34ul)               // unsigned long (32 bit )Pin description number for PIO_SERCOM on D12 - PA19
@@ -1383,28 +1390,24 @@ ModbusSerial<decltype(Serial1)> mySerial(&Serial1);
 // ModbusSerial<decltype(Serial2)> mySerial(&Serial2);
 
 // Calling constructors (the .begin function of each class must be called in Setup)
-// Read_2_InputRegisters readTotalSystemPower(datagram, Total_System_Power_Address);
 Read_2_InputRegisters readImportWork(datagram, Import_Work_Address);
 Read_2_InputRegisters readSummedCurrent(datagram, Sum_of_Current_Address);
 Read_2_InputRegisters readTotalPower(datagram, TotalPower_Address);
 
 void setup() 
 {
+  Serial.begin(SERIAL_BAUD);
+
   #ifdef DebugPrint
-  while (!Serial); // wait until serial console is open, remove if not tethered to computer
-  //Serial.begin(SERIAL_BAUD);
-
-  
-
-  Serial.println("Feather RFM69HCW Transmitter");
+    while (!Serial); // wait until serial console is open, remove if not tethered to computer
   #endif
-  
-//powerOn();
 
-while (!Serial); // wait until serial console is open, remove if not tethered to computer
-  Serial.begin(115200);
-  Serial.println("Hallo"); 
-pinMode(LED, OUTPUT);
+  yield();
+  Serial.println("Feather RFM69HCW Transmitter");
+  //powerOn();
+
+  pinMode(LED, OUTPUT);
+  // Blinky to show that program has started
   for (int i = 0; i < 4; i++)
   {
     digitalWrite(LED, HIGH);
@@ -1413,17 +1416,12 @@ pinMode(LED, OUTPUT);
     delay(500);
   }
 
-  
+  // Serial port for Modbus transmission to Smartmeter
+  host.begin(&mySerial, 2400, SERIAL_8N1); // baud-rate at 2400
+  host.setTimeOut( 1000 ); // if there is no answer in 1000 ms, roll over
+  host.setTxEnableDelay(100);
 
-  //delay(1000);
-
-  Serial.println("Feather RFM69HCW Transmitter");
-
-host.begin(&mySerial, 2400, SERIAL_8N1); // baud-rate at 2400
-host.setTimeOut( 1000 ); // if there is no answer in 1000 ms, roll over
-host.setTxEnableDelay(100);
-
-  // readTotalSystemPower.begin(host, InitialReleaseTimespan_Ms);
+  // Initialization of Classes to read values from the Smartmeter (is needed)
   readImportWork.begin(host, InitialReleaseTimespan_Work_Ms);
   readSummedCurrent.begin(host, InitialReleaseTimespan_Current_Ms);
   readTotalPower.begin(host, InitialReleaseTimespan_Power_Ms);
@@ -1439,36 +1437,11 @@ host.setTxEnableDelay(100);
   Serial.print("Packetnumber: "); Serial.println(packetnum);
 #endif
 
-  // Input
+  // Input to read the state of the pump sensor
   pinMode(12, INPUT_PULLUP);
-  /*
-   pinMode(11, OUTPUT);
-   while (true)
-   {
-     digitalWrite(11, HIGH);
-     delay(100);
-     digitalWrite(11, LOW);
-     delay(100);
-   }
-   */
-   /*
-   while (true)
-   {
-     volatile int readRes = digitalRead(12);
-     if (readRes == 0)
-     {
-      Serial.println("LOW");
-     }
-     else
-     {
-       Serial.println("HIGH");
-     }    
-     delay(2000);   
-   }
-  */
 
-
-
+  pinMode(11, OUTPUT);   // only needed for tests and debugging
+  
   // Hard Reset the RFM module
   pinMode(RFM69_RST, OUTPUT);   // Feather M0: 4
   digitalWrite(RFM69_RST, HIGH);  
@@ -1486,9 +1459,8 @@ host.setTxEnableDelay(100);
   _inISR = false;
 
     _initResult = 0x00;
+
   // Initialize radio
-  //radio.initialize(FREQUENCY,NODEID,NETWORKID);
- 
   _initResult = initialize(FREQUENCY, NODEID, NETWORKID);
   
   if (IS_RFM69HCW) 
@@ -1496,14 +1468,12 @@ host.setTxEnableDelay(100);
     setHighPower(true);    // Only for RFM69HCW & HW!
   }
   
-  //setPowerLevel(31); // power output ranges from 0 (5dBm) to 31 (20dBm)
   setPowerLevel(31); // power output ranges from 0 (5dBm) to 31 (20dBm)
 
   encrypt(ENCRYPTKEY);
   //encrypt(0);
 
-  
-
+  //Another blinky sequence to show progress of programm
   Blink(LED, 200, 10);
   
 #ifdef DebugPrint
@@ -1531,18 +1501,17 @@ host.setTxEnableDelay(100);
      lastMode = _mode;
      setMode(RF69_MODE_STANDBY);  // Prevent the delay from beeing interrupted by interrupts from the radio, 
                                 //otherweise the delay never returns      
-     //delay(180000);  // Wait 180 seconds before the next try (normal)
-     delay(5000);  // Wait 20 seconds before the next try (for tests)
+     delay(180000);  // Wait 180 seconds before the next try to connect to the Gateway via Rfm69 (normal)
+     //delay(5000);  // Wait 5 seconds before the next try (for tests)
      setMode(lastMode);            // Restore previous mode
   }
   
- 
   // if ack received wait 15 sec
   lastMode = _mode;
   setMode(RF69_MODE_STANDBY);  // Prevent the delay from beeing interrupted by interrupts from the radio, 
                                   //otherweise the delay never returns      
-  //delay(15000);  // Wait x seconds between transmits, could also 'sleep' here!
-  delay(5000);  // Wait x seconds between transmits, could also 'sleep' here!
+  delay(15000);  // Wait x milliseconds between transmits, could also 'sleep' here!
+  //delay(5000);  // Wait x milliseconds between transmits, could also 'sleep' here!
   setMode(lastMode);            // Restore previous mode
 }
 
@@ -1552,16 +1521,14 @@ void loop()
   setMode(RF69_MODE_STANDBY);  // Prevent the delay from beeing interrupted by interrupts from the radio, 
                                 //otherweise the delay never returns 
   delay(500);  // Wait x seconds between transmits, could also 'sleep' here! 
+  
   setMode(lastMode);            // Restore previous mode
 
   /*
-  // This is only for tests
-  if (!firstPass)
+  // This is only for tests (simulates state-changes of input about every 20 sec)
+  Pin11Switchcounter++;
+  if ((Pin11Switchcounter % 40) == 0)
   {
-    #ifdef DebugPrint
-            Serial.println("In Switch function");
-    #endif
-      
     if (digital_11_State)
     {  
       Serial.println("Set Low");  
@@ -1573,20 +1540,16 @@ void loop()
       Serial.println("Set High");  
       digitalWrite(11, HIGH);
       digital_11_State = true;
-    }  
-  }
-  else
-  {
-      firstPass = false; 
+    } 
   }
   */
 
+
   #ifdef DebugPrint
-     Serial.println("Loop");
+     //Serial.println("Loop");
   #endif
-  volatile int readResult = digitalRead(12);
-  //if (digitalRead(12) == 0)   // Pump is on 
-  if (readResult == 0)   // Pump is on  
+  
+  if (digitalRead(12) == 0)   // Pump is on 
   {
     lastMode = _mode;
     setMode(RF69_MODE_STANDBY);
@@ -1598,9 +1561,10 @@ void loop()
         if (oldState == 1)   // was off before
         {        
           actState = 0;
-          Serial.println("Pump is on");
+          //Serial.println("Pump is on");
+          skipCounter = 0;
           if (sendMessage(actState, oldState))
-          {          
+          {                 
             oldState = 0;                       
             repeatSend = 0;
           }
@@ -1640,9 +1604,11 @@ void loop()
       if (oldState == 0)
       {          
         actState = 1;
-        Serial.println("Pump is off");
+        //Serial.println("Pump is off");
+        skipCounter = 0;
         if (sendMessage(actState, oldState))
-        {    
+        {
+          
           oldState = 1;      
           repeatSend = 0; 
         }
@@ -1670,14 +1636,15 @@ void loop()
     }
   }
   
-  receiveDone(); //put radio in RX mode
-  //Serial.flush(); //make sure all serial data is clocked out before sleeping the MCU
-
-
+        if (skipCounter > 5)       
+        {
+            skipCounter = 0;
         if ((regsRetStruct.ErrorCode == (int16_t)ERR_LOC_BEGIN_FUNCTION_NOT_EXECUTED) ||
             (regsRetStruct_2.ErrorCode == (int16_t)ERR_LOC_BEGIN_FUNCTION_NOT_EXECUTED))
         {
+          #ifdef DebugPrint
               Serial.println("ERROR: .begin function not executed in Setup");
+          #endif
         }  
         // Read 'Current' from the Smartmeter if its releaseTime has expired
         if (readSummedCurrent.isReleased())
@@ -1694,23 +1661,29 @@ void loop()
               ActCurrent = resultStruct.value;
               ActPower = resultStruct_2.value;
               dataContainer.SetNewValues(millis(), ActCurrent, ActPower, ActImportWork);
-              Serial.println("  " + String(resultStruct.value, 4) + "  Amps");
-              Serial.println("  " + String(resultStruct_2.value, 4) + "  Watt");            
+              #ifdef DebugPrint
+                Serial.println("  " + String(resultStruct.value, 4) + "  Amps");
+                Serial.println("  " + String(resultStruct_2.value, 4) + "  Watt");
+              #endif            
             }
             else
             {
               ActCurrent = NotValidValue;
               ActPower = NotValidValue;
-              Serial.println("Current value not valid "); 
+              #ifdef DebugPrint
+                Serial.println("Current value not valid ");
+              #endif 
             } 
           }
           else
           {
             ActCurrent = NotValidValue;
-            ActPower = NotValidValue;          
-            Serial.print("Reading Power failed. Error Code: " );
-            Serial.print((int16_t)regsRetStruct.ErrorCode);
-            Serial.println("");
+            ActPower = NotValidValue;
+            #ifdef DebugPrint       
+              Serial.print("Reading Power failed. Error Code: " );
+              Serial.print((int16_t)regsRetStruct.ErrorCode);
+              Serial.println("");
+            #endif
           }
           
         }
@@ -1732,34 +1705,42 @@ void loop()
             int16_2_float_function_result resultStruct = reform_uint16_2_float32(regsRetStruct.HighReg, regsRetStruct.LowReg);
             if (resultStruct.validity == true)
             {
-
-              Serial.println("  " + String(resultStruct.value, 4) + "  KWh");                               
+              #ifdef DebugPrint
+                Serial.println("  " + String(resultStruct.value, 4) + "  KWh");
+              #endif                               
             }
             else
             {
-              Serial.println("Work value not valid "); 
+              #ifdef DebugPrint
+                Serial.println("Work value not valid ");
+              #endif 
             } 
           }
            else
           {
             ActImportWork = 0xffffffff;
-            Serial.print("Reading Work failed. Error Code: ");
-            Serial.print((int16_t)regsRetStruct.ErrorCode);
-            Serial.println("");           
+            #ifdef DebugPrint
+              Serial.print("Reading Work failed. Error Code: ");
+              Serial.print((int16_t)regsRetStruct.ErrorCode);
+              Serial.println("");
+            #endif           
           }
         }
-        
-      
+              
         if (dataContainer.hasToBeSent())
         {
           sampleValues = dataContainer.getSampleValuesAndReset();
-          Serial.print("Valus from DataContainer: Current: ");
-          Serial.print(sampleValues.AverageCurrent);
-          Serial.print(" Amps ");
-          Serial.print(sampleValues.AveragePower);
-          Serial.print(" Watt ");
+          #ifdef DebugPrint
+            Serial.print("Valus from DataContainer: Current: ");
+            Serial.print(sampleValues.AverageCurrent);
+            Serial.print(" Amps ");
+            Serial.print(sampleValues.AveragePower);
+            Serial.print(" Watt ");
+          #endif
           int16_2_float_function_result resultStruct = reform_uint16_2_float32(ImpWorkHigh, ImpWorkLow);
-          Serial.print(" " + String(resultStruct.value, 4) + "  kWh  ");
+          #ifdef DebugPrint
+            Serial.print(" " + String(resultStruct.value, 4) + "  kWh  ");
+          #endif
           int dataState = 2;  // treat as data from the smartmeter
           
           // Current and Power is multilied by 100, take only the places before the decimal point
@@ -1770,44 +1751,50 @@ void loop()
           volatile uint32_t intWork = ImpWorkLow | (ImpWorkHigh << 16);
           
           sendMessage(dataState, dataState, intCurrent, intPower, intWork);
-          Serial.print(sampleValues.EndTime_Ms - sampleValues.StartTime_Ms);         
-          Serial.print(" ms");
-          Serial.println("");
+          #ifdef DebugPrint
+            Serial.print(sampleValues.EndTime_Ms - sampleValues.StartTime_Ms);         
+            Serial.print(" ms");
+            Serial.println("");
+          #endif
         }
         else
         {
-          Serial.println("Nothing to send");
+          //Serial.println("Nothing to send");
         }
+        Serial1.flush();
         
+        }
+        skipCounter++;
 
-  //receiveDone(); //put radio in RX mode
+  receiveDone(); //put radio in RX mode
   Serial.flush(); //make sure all serial data is clocked out before sleeping the MCU
-  Serial1.flush();
+  
 }
 
 
 //bool sendMessage(int pActState, int pOldState, uint32_t pCurrent, u_int32_t pPower, uint16_t pWork_High, uint16_t pWork_Low)
 bool sendMessage(int pActState, int pOldState, uint32_t pCurrent, u_int32_t pPower, uint32_t pWork)
 {     
-      // Warning: Writing behind the end is managed through union with Char[24]
+      // Warning: Writing behind the end is managed through union with Char[27]
       // see definition
       
-      
-
+    
       packetnum++;
       packetnum = packetnum & 0x00FF;
       // sendInfo is transmitted to the gateway for tests, first 3 digits are packetnum, last digit is repeatSend
       
       sendInfo = packetnum * 10;
       sendInfo = sendInfo + repeatSend;
+
       #ifdef DebugPrint    
       Serial.print("SendInfo: "); Serial.println(sendInfo);
       #endif
      
-
      // sprintf(radiopacket, "%.3d %.1d %.1d %.4d %.4d %.4d\n", packetnum, pActState, pOldState, sendInfo, val_2, val_3);
         sprintf(packets.radiopacket, "%.3d %.1d %.1d %.4d %.4d %.4d %.4d\n", packetnum, pActState, pOldState, sendInfo, 0, 0, 0);
-
+        
+        if (pActState > 1)
+        {
         // Current      
         packets.radiopacket[13] = (byte)(pCurrent >> 24) & 0x000000FF;
         packets.radiopacket[14] = (byte)(pCurrent >> 16) & 0x000000FF;
@@ -1815,8 +1802,7 @@ bool sendMessage(int pActState, int pOldState, uint32_t pCurrent, u_int32_t pPow
         packets.radiopacket[16] = (byte)pCurrent & 0x000000FF;
         
         
-        // Power
-        
+        // Power        
         packets.radiopacket[18] = (byte)(pPower >> 24) & 0x000000FF;
         packets.radiopacket[19] = (byte)(pPower >> 16) & 0x000000FF;
         packets.radiopacket[20] = (byte)(pPower >> 8) & 0x000000FF;
@@ -1827,11 +1813,33 @@ bool sendMessage(int pActState, int pOldState, uint32_t pCurrent, u_int32_t pPow
         packets.radiopacket[24] = (byte)(pWork >> 16) & 0x000000FF;       
         packets.radiopacket[25] = (byte)(pWork >> 8) & 0x000000FF;
         packets.radiopacket[26] = (byte)pWork & 0x000000FF;
+        }
+        else
+        {
+          //Current
+        packets.radiopacket[13] = (byte)'a';
+        packets.radiopacket[14] = (byte)'a';
+        packets.radiopacket[15] = (byte)'a';
+        packets.radiopacket[16] = (byte)'a';
+        
+        
+        // Power
+        
+        packets.radiopacket[18] = (byte)'a';
+        packets.radiopacket[19] = (byte)'a';
+        packets.radiopacket[20] = (byte)'a';
+        packets.radiopacket[21] = (byte)'a';
 
-
+        // Work              
+        packets.radiopacket[23] = (byte)'a';
+        packets.radiopacket[24] = (byte)'a';       
+        packets.radiopacket[25] = (byte)'a';
+        packets.radiopacket[26] = (byte)'a';
+        }
         
 
-
+        // Is for debugging
+        /*
         volatile byte B_00 = packets.radiopacket[0];
         volatile byte B_01 = packets.radiopacket[1];
         volatile byte B_02 = packets.radiopacket[2];
@@ -1859,15 +1867,18 @@ bool sendMessage(int pActState, int pOldState, uint32_t pCurrent, u_int32_t pPow
         volatile byte B_24 = packets.radiopacket[24];
         volatile byte B_25 = packets.radiopacket[25];
         volatile byte B_26 = packets.radiopacket[26];
+        volatile byte B_27 = packets.radiopacket[27];
+        */
 
-
-
-
+        // Is for debugging
         if (pActState == 2)
-      {
-        volatile int dummy = pActState;
-      }
+        {
+          volatile int dummy = pActState;
+        }
+        
+
       /*
+
       if (pActState == 0)
       {
         //sprintf(radiopacket, "%.3d 0 %.4d %.4d %.4d\n", packetnum, val_1, val_2, val_3);
@@ -1898,7 +1909,7 @@ bool sendMessage(int pActState, int pOldState, uint32_t pCurrent, u_int32_t pPow
       //target node Id, message as string or byte array, message length, No. of Retries, timeout wait for ACK in ms
       // Changed by RoSchmi
       //if (sendWithRetry(RECEIVER, packets.radiopacket, strlen(packets.radiopacket), 4, 600))
-      if (sendWithRetry(RECEIVER, packets.radiopacket, radioPacketLength, 4, 600))       
+      if (sendWithRetry(RECEIVER, packets.radiopacket, radioPacketLength, 8, 500))       
       {
 #ifdef DebugPrint
         Serial.println("OK");
@@ -1914,7 +1925,6 @@ bool sendMessage(int pActState, int pOldState, uint32_t pCurrent, u_int32_t pPow
       return false;
       }  
 }
-
 
 
 void Blink(byte PIN, byte DELAY_MS, byte loops)
@@ -2134,7 +2144,7 @@ bool ACKReceived(uint8_t fromNodeID)
 // replies usually take only 5..8ms at 50kbps@915MHz
 bool sendWithRetry(uint8_t toAddress, const void* buffer, uint8_t bufferSize, uint8_t retries, uint8_t retryWaitTime) 
 {
-  unsigned long sentTime;
+  volatile unsigned long sentTime;
   volatile unsigned long actTime;
   //Serial.println("I am in sendWithRetry routine");
   for (uint8_t i = 0; i <= retries; i++)
@@ -2143,7 +2153,7 @@ bool sendWithRetry(uint8_t toAddress, const void* buffer, uint8_t bufferSize, ui
     sentTime = millis();
     //while (millis() - sentTime < retryWaitTime)
     while (true)
-    {     
+    {       
       if (ACKReceived(toAddress))
       {
 #ifdef DebugPrint        
@@ -2151,12 +2161,19 @@ bool sendWithRetry(uint8_t toAddress, const void* buffer, uint8_t bufferSize, ui
 #endif
         return true;
       }
-      actTime = millis();
-            
-      //Serial.println(" "); Serial.print("actTime = "); Serial.print(actTime); Serial.print("  sentTime = ");Serial.print(sentTime); Serial.print(" elapsed = ");Serial.print(actTime - sentTime);
-      if(actTime - sentTime > retryWaitTime)
-      break;
       
+      // do some dummy commands and show activity on the LED
+      digitalWrite(LED, HIGH);     
+      for (int i2 = 0; i2 < 10000; i2++)
+      {
+        i2++;
+        i2--;
+      }
+      actTime = millis();
+      digitalWrite(LED, LOW);   
+      //Serial.println(" ("); Serial.print("actTime = "); Serial.print(actTime); Serial.print("  sentTime = ");Serial.print(sentTime); Serial.print(" elapsed = ");Serial.print(actTime - sentTime);
+      if(actTime - sentTime > retryWaitTime)     
+      break;      
       }
 #ifdef DebugPrint
     Serial.print(" RETRY#"); Serial.println(i + 1);
