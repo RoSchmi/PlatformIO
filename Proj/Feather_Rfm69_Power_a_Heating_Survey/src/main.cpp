@@ -1161,8 +1161,8 @@
 //Changed by RoSchmi
 #define NETWORKID     100  //the same on all nodes that talk to each other
 #define NODEID        2    // The unique identifier of this node
-//#define RECEIVER      1    // The recipient of packets
-#define RECEIVER      3    // The recipient of packets
+#define RECEIVER      1    // The recipient of packets (Node in the heating room)
+//#define RECEIVER      3    // The recipient of packets (of the test-node)
 
 #define RF69_315MHZ            31 // non trivial values to avoid misconfiguration
 #define RF69_433MHZ            43
@@ -1334,8 +1334,8 @@ SampleValues sampleValues;
 bool isForcedReadInputWork = true;
 //Call Constructor of DataContainer
 // Parameters means: send at least every 10 min or if the deviation is more than 10% or more than 0.2 Amps
-//DataContainer dataContainer(10 * 60 * 1000, TriggerDeviation::PERCENT_10, TriggerDeviationAmps::AMPERE_02);
-DataContainer dataContainer(120 * 1000, TriggerDeviation::PERCENT_10, TriggerDeviationAmps::AMPERE_02);
+DataContainer dataContainer(10 * 60 * 1000, TriggerDeviation::PERCENT_10, TriggerDeviationAmps::AMPERE_02);
+//DataContainer dataContainer(120 * 1000, TriggerDeviation::PERCENT_10, TriggerDeviationAmps::AMPERE_02);
 
 
 // not used in this example
