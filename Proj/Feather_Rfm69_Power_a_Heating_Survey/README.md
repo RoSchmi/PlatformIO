@@ -12,3 +12,4 @@ https://community.platformio.org/t/problems-starting-debug-session-with-jlink-on
 
 To work without bootloader as suggested in this link, the BooProt Fuse has to be set to 0 bytes
 with Atmel Studio. The special .json file has to be in the folder 'boards'
+
