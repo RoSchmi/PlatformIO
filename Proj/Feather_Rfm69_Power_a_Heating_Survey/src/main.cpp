@@ -1,13 +1,23 @@
-// Version for SDM530MT Modbus HeatingCurrentSurvey Sensor Version 1.0
-// Mainboard Feather M0 Rfm69 433 MHz
-
+// Program 'Feather_Rfm69_Power_a_Heating_Survey
 // Copyright RoSchmi, 2020. License: GNU General Public License
+// Mainboard Feather M0 Rfm69 433 MHz
+// Version 1.0 (23.03.2020) for SDM530MT Modbus HeatingCurrentSurvey Sensor 
+
+// This program reads Data (Currrent, Power and Work) from a SDM530MT Smartmeter
+// Current and Power values are read from the Smartmeter every 5 seconds via Modbus 
+// and averaged over a minute.
+// When the current value changes by more than 10 % or more than 200 mA
+// (at least every 10 minutes) the values are transferred to a Gateway via Rfm69 radio transmission
+// Additionally GPIO 12 is monitored for On/Off state changes. Every state change is
+// send to the gateway
+
 
 // Debugging hints:
 // https://community.platformio.org/t/problems-starting-debug-session-with-jlink-on-feather-m0/12291
 //
 
 // For debugging The bootloader must be overwritten (Fuse set to 0 Bytes- see link)
+// This can be done with Atmel Studio --> Tools --> Device Programming
 // For debugging with PlatformIO The file: adafruit_feather_m0_no_bootloader.json must be
 // in folder 'boards'
 // platformio.ini must contain the line: board = adafruit_feather_m0_no_bootloader
@@ -1211,7 +1221,8 @@
 
 
 unsigned long seed;
-int16_t packetnum;  // packet counter, we increment per xmission, 
+int16_t packetnum;        // packet counter, we increment per xmission,
+bool firstPacket = true;  // flag to signal the first round after reboot
 
 uint8_t _slaveSelectPin;
 uint8_t _interruptPin;
@@ -1261,6 +1272,7 @@ int16_t val_2 = 2;
 int16_t val_3 = 3;
  
 volatile int repeatSend = 0;
+volatile int repeatSendData = 0;
 int maxRepeatSend = 7;   // if no sending success, sending is repeated maxRepeatSend times with time between of 3 sec
 
 volatile int8_t lastMode;
@@ -1335,7 +1347,7 @@ bool isForcedReadInputWork = true;
 //Call Constructor of DataContainer
 // Parameters means: send at least every 10 min or if the deviation is more than 10% or more than 0.2 Amps
 DataContainer dataContainer(10 * 60 * 1000, TriggerDeviation::PERCENT_10, TriggerDeviationAmps::AMPERE_02);
-//DataContainer dataContainer(120 * 1000, TriggerDeviation::PERCENT_10, TriggerDeviationAmps::AMPERE_02);
+// DataContainer dataContainer(60 * 1000, TriggerDeviation::PERCENT_10, TriggerDeviationAmps::AMPERE_02);
 
 
 // not used in this example
@@ -1473,8 +1485,7 @@ void setup()
   encrypt(ENCRYPTKEY);
   //encrypt(0);
 
-  //Another blinky sequence to show progress of programm
-  Blink(LED, 200, 10);
+  
   
 #ifdef DebugPrint
   Serial.print("\nTransmitting at ");
@@ -1505,6 +1516,9 @@ void setup()
      //delay(5000);  // Wait 5 seconds before the next try (for tests)
      setMode(lastMode);            // Restore previous mode
   }
+
+  //Another blinky sequence to show progress of programm
+  Blink(LED, 200, 10);
   
   // if ack received wait 15 sec
   lastMode = _mode;
@@ -1520,7 +1534,14 @@ void loop()
   lastMode = _mode;
   setMode(RF69_MODE_STANDBY);  // Prevent the delay from beeing interrupted by interrupts from the radio, 
                                 //otherweise the delay never returns 
-  delay(500);  // Wait x seconds between transmits, could also 'sleep' here! 
+  delay(500);  // Wait x seconds between transmits, could also 'sleep' here!
+  if (skipCounter > 5)    //Blink LED every 5 th round to signal that App is running
+  {
+    digitalWrite(LED, HIGH);
+    delay(50);
+    digitalWrite(LED, LOW);
+  } 
+   
   
   setMode(lastMode);            // Restore previous mode
 
@@ -1564,7 +1585,8 @@ void loop()
           //Serial.println("Pump is on");
           skipCounter = 0;
           if (sendMessage(actState, oldState))
-          {                 
+          { 
+            firstPacket = false;               
             oldState = 0;                       
             repeatSend = 0;
           }
@@ -1608,7 +1630,7 @@ void loop()
         skipCounter = 0;
         if (sendMessage(actState, oldState))
         {
-          
+          firstPacket = false;
           oldState = 1;      
           repeatSend = 0; 
         }
@@ -1750,7 +1772,29 @@ void loop()
           // Work is transmitted as two uint16_t values as higher and lower bytes in one uint32_t number
           volatile uint32_t intWork = ImpWorkLow | (ImpWorkHigh << 16);
           
-          sendMessage(dataState, dataState, intCurrent, intPower, intWork);
+          if (sendMessage(dataState, dataState, intCurrent, intPower, intWork))
+          {
+            firstPacket = false;
+            repeatSendData = 0;
+          }
+          else
+          {
+            packetnum--;          
+            if (repeatSendData > maxRepeatSend)
+            {                   
+              repeatSendData = 0;           
+            }
+            else
+            {          
+              repeatSendData++;
+         
+              lastMode = _mode;
+              setMode(RF69_MODE_STANDBY);
+              delay(3000);                 // Delay between repeats        
+              setMode(lastMode);
+            }
+          }
+          
           #ifdef DebugPrint
             Serial.print(sampleValues.EndTime_Ms - sampleValues.StartTime_Ms);         
             Serial.print(" ms");
@@ -1783,7 +1827,15 @@ bool sendMessage(int pActState, int pOldState, uint32_t pCurrent, u_int32_t pPow
       packetnum = packetnum & 0x00FF;
       // sendInfo is transmitted to the gateway for tests, first 3 digits are packetnum, last digit is repeatSend
       
-      sendInfo = packetnum * 10;
+      if (firstPacket)
+      {
+        sendInfo = 9990;   //Magic number signals first send after reboot, 
+      }
+      else
+      {
+        sendInfo = packetnum * 10;
+      }
+         
       sendInfo = sendInfo + repeatSend;
 
       #ifdef DebugPrint    
@@ -1818,23 +1870,23 @@ bool sendMessage(int pActState, int pOldState, uint32_t pCurrent, u_int32_t pPow
         {
           //Current
         packets.radiopacket[13] = (byte)'a';
-        packets.radiopacket[14] = (byte)'a';
-        packets.radiopacket[15] = (byte)'a';
-        packets.radiopacket[16] = (byte)'a';
+        packets.radiopacket[14] = (byte)'b';
+        packets.radiopacket[15] = (byte)'c';
+        packets.radiopacket[16] = (byte)'d';
         
         
         // Power
         
         packets.radiopacket[18] = (byte)'a';
-        packets.radiopacket[19] = (byte)'a';
-        packets.radiopacket[20] = (byte)'a';
-        packets.radiopacket[21] = (byte)'a';
+        packets.radiopacket[19] = (byte)'b';
+        packets.radiopacket[20] = (byte)'c';
+        packets.radiopacket[21] = (byte)'d';
 
         // Work              
         packets.radiopacket[23] = (byte)'a';
-        packets.radiopacket[24] = (byte)'a';       
-        packets.radiopacket[25] = (byte)'a';
-        packets.radiopacket[26] = (byte)'a';
+        packets.radiopacket[24] = (byte)'b';       
+        packets.radiopacket[25] = (byte)'c';
+        packets.radiopacket[26] = (byte)'d';
         }
         
 
@@ -1871,37 +1923,13 @@ bool sendMessage(int pActState, int pOldState, uint32_t pCurrent, u_int32_t pPow
         */
 
         // Is for debugging
+        /*
         if (pActState == 2)
         {
           volatile int dummy = pActState;
         }
-        
-
-      /*
-
-      if (pActState == 0)
-      {
-        //sprintf(radiopacket, "%.3d 0 %.4d %.4d %.4d\n", packetnum, val_1, val_2, val_3);
-        // repeatSend transmitted for tests to monitor the quality of the transmission
-        sprintf(radiopacket, "%.3d 0 %.4d %.4d %.4d\n", packetnum, sendInfo, val_2, val_3);
-      }
-      else
-      {
-        if (paActState == 1)
-        {
-          //sprintf(radiopacket, "%.3d 1 %.4d %.4d %.4d\n", packetnum, val_1, val_2, val_3);
-          // repeatSend transmitted for tests to monitor the quality of the transmission
-          sprintf(radiopacket, "%.3d 1 %.4d %.4d %.4d\n", packetnum, sendInfo, val_2, val_3);
-        }       
-        else
-        {
-          //sprintf(radiopacket, "%.3d 3 %.4d %.4d %.4d\n", packetnum, val_1, val_2, val_3);
-          // repeatSend transmitted for tests to monitor the quality of the transmission
-          sprintf(radiopacket, "%.3d 1 %.4d %.4d %.4d\n", packetnum, sendInfo, val_2, val_3);
-        }
-      }
-      */
-      
+        */
+             
 #ifdef DebugPrint    
       Serial.print("Sending "); Serial.println(packets.radiopacket);
 #endif
