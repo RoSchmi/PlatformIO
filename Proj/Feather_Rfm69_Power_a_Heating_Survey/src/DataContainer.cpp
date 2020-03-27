@@ -26,6 +26,7 @@ void DataContainer::SetNewValues(uint32_t pActSampleTime, float pActCurrent, flo
     if (isFirstTransmission)
     {
         LastSampleTime_Ms = pActSampleTime - 1;
+        
         LastSendTime_Ms = pActSampleTime - 1;
         ActAverageCurrent = pActCurrent;
         LastAverageCurrent = pActCurrent;
@@ -41,7 +42,8 @@ void DataContainer::SetNewValues(uint32_t pActSampleTime, float pActCurrent, flo
         SummedCurrents += pActCurrent * (pActSampleTime - LastSampleTime_Ms);       
         ActAverageCurrent = SummedCurrents / (pActSampleTime - LastSendTime_Ms);
         SummedPower += pActPower * (pActSampleTime - LastSampleTime_Ms);
-        LastSampleTime_Ms = pActSampleTime;
+        //LastSampleTime_Ms = pActSampleTime;
+        LastSampleTime_Ms = ActSampleTime_Ms;
         ActAveragePower = SummedPower / (pActSampleTime - LastSendTime_Ms);
     }   
     ActSampleTime_Ms = pActSampleTime;
@@ -49,9 +51,12 @@ void DataContainer::SetNewValues(uint32_t pActSampleTime, float pActCurrent, flo
     ActMeasuredPower = pActPower;
     ActImportWorkUint32 = pActImportWorkUint32;
 
-    if((int32_t)(ActSampleTime_Ms - LastSendTime_Ms) > (int32_t)MaxSendInterval_Ms)
+    //if((int32_t)(ActSampleTime_Ms - LastSendTime_Ms) > (int32_t)MaxSendInterval_Ms)
+    if((ActSampleTime_Ms - LastSendTime_Ms) > MaxSendInterval_Ms)
     {
         LastAverageCurrent = ActAverageCurrent;
+        // this was not before
+        LastAveragePower = ActAveragePower;
         _hasToBeSent = true;
     }
 
@@ -63,14 +68,18 @@ void DataContainer::SetNewValues(uint32_t pActSampleTime, float pActCurrent, flo
     // volatile float theValue = abs(averageCurrentDiff);
     // volatile float theAmpsDeviation = ((int16_t)AmpereDeviationLevel) * 0.1;
 
-    // volatile bool Condition_Time = ((int32_t)(ActSampleTime_Ms - LastSendTime_Ms) > (int32_t)AveragingTimespan_Ms);
+    // volatile bool Condition_Time = ((ActSampleTime_Ms - LastSendTime_Ms) > AveragingTimespan_Ms);
     // volatile bool ConditionPercent = (abs(averageCurrentDiff)  > (LastAverageCurrent / 100 * (int16_t)PercentDeviationLevel));
     // volatile bool ConditionAmpere = (abs(averageCurrentDiff) > (((int16_t)AmpereDeviationLevel) * 0.1));
 
     // --> send if AveragingTimespan is exceeded and a deviation to the value before is of a selected percent or an absolute Ampere value
-    if (((int32_t)(ActSampleTime_Ms - LastSendTime_Ms) > (int32_t)AveragingTimespan_Ms) && 
-       (abs(averageCurrentDiff)  > (LastAverageCurrent / 100 * (int16_t)PercentDeviationLevel)) || 
-       (abs(averageCurrentDiff) > (((int16_t)AmpereDeviationLevel) * 0.1)))
+    //if (((int32_t)(ActSampleTime_Ms - LastSendTime_Ms) > (int32_t)AveragingTimespan_Ms) && 
+    //   (abs(averageCurrentDiff)  > (LastAverageCurrent / 100 * (int16_t)PercentDeviationLevel)) || 
+    //   (abs(averageCurrentDiff) > (((int16_t)AmpereDeviationLevel) * 0.1)))
+    if (((ActSampleTime_Ms - LastSendTime_Ms) > AveragingTimespan_Ms) && 
+       ((abs(averageCurrentDiff)  > (LastAverageCurrent / 100 * (int16_t)PercentDeviationLevel)) || 
+       (abs(averageCurrentDiff) > (((int16_t)AmpereDeviationLevel) * 0.1))))
+
     {
         LastAverageCurrent = ActAverageCurrent;
         LastAveragePower = ActAveragePower;

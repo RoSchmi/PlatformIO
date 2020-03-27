@@ -1,4 +1,4 @@
-// Program 'Feather_Rfm69_Power_a_Heating_Survey
+// Program 'Feather_Rfm69_Power_a_Heating_Survey'
 // Copyright RoSchmi, 2020. License: GNU General Public License
 // Mainboard Feather M0 Rfm69 433 MHz
 // Version 1.0 (23.03.2020) for SDM530MT Modbus HeatingCurrentSurvey Sensor 
@@ -11,6 +11,9 @@
 // Additionally GPIO 12 is monitored for On/Off state changes. Every state change is
 // send to the gateway
 
+// The Gateway is a FEZ Spider Board with an Rfm96 Module attached, running the Application
+// 'HeatingCurrentSurfey' (https://github.com/RoSchmi/NETMFGadgeteer/tree/master/HeatingCurrentSurvey)
+// The Gateway receives the massages and saves the messages in the Cloud (Azure Storage Tables) 
 
 // Debugging hints:
 // https://community.platformio.org/t/problems-starting-debug-session-with-jlink-on-feather-m0/12291
@@ -1295,7 +1298,7 @@ uint8_t initialize(uint8_t freqBand, uint8_t nodeID, uint8_t networkID);
 void setHighPower(bool onOff);
 void setPowerLevel(uint8_t powerLevel);
 void encrypt(const char* key);
-bool sendMessage(int pActState, int pOldState, uint32_t pCurrent = 0, uint32_t pPower = 0, uint32_t pWork= 0);
+bool sendMessage(int pActState, int pOldState, uint32_t pTimeFromLast_MS = 0, uint32_t pCurrent = 0, uint32_t pPower = 0, uint32_t pWork= 0);
 void setMode(uint8_t newMode);
 bool receiveDone();
 bool sendWithRetry(uint8_t toAddress, const void* buffer, uint8_t bufferSize, uint8_t retries, uint8_t retryWaitTime); 
@@ -1346,8 +1349,9 @@ SampleValues sampleValues;
 bool isForcedReadInputWork = true;
 //Call Constructor of DataContainer
 // Parameters means: send at least every 10 min or if the deviation is more than 10% or more than 0.2 Amps
-DataContainer dataContainer(10 * 60 * 1000, TriggerDeviation::PERCENT_10, TriggerDeviationAmps::AMPERE_02);
-// DataContainer dataContainer(60 * 1000, TriggerDeviation::PERCENT_10, TriggerDeviationAmps::AMPERE_02);
+// RoSchmi
+DataContainer dataContainer(5 * 60 * 1000, TriggerDeviation::PERCENT_10, TriggerDeviationAmps::AMPERE_02);
+//DataContainer dataContainer(60 * 1000, TriggerDeviation::PERCENT_10, TriggerDeviationAmps::AMPERE_02);
 
 
 // not used in this example
@@ -1658,157 +1662,157 @@ void loop()
     }
   }
   
-        if (skipCounter > 5)       
+  if (skipCounter > 5)       
+  {
+    skipCounter = 0;
+    if ((regsRetStruct.ErrorCode == (int16_t)ERR_LOC_BEGIN_FUNCTION_NOT_EXECUTED) ||
+      (regsRetStruct_2.ErrorCode == (int16_t)ERR_LOC_BEGIN_FUNCTION_NOT_EXECUTED))
+    {
+      #ifdef DebugPrint
+        Serial.println("ERROR: .begin function not executed in Setup");
+      #endif
+    }  
+    // Read 'Current' from the Smartmeter if its releaseTime has expired
+    if (readSummedCurrent.isReleased())
+    {
+      regsRetStruct = readSummedCurrent.get_2_InputRegisters(u8addr, FollowReleaseTimespan_Current_Ms, ForceState::RespectReleaseTime);
+      regsRetStruct_2 = readTotalPower.get_2_InputRegisters(u8addr, FollowReleaseTimespan_Power_Ms, ForceState::IgnoreReleaseTime);
+      if ((regsRetStruct.ErrorCode == (int16_t)ERR_SUCCESS) && (regsRetStruct_2.ErrorCode == (int16_t)ERR_SUCCESS))
+      {
+        //Calculate value as float and print out
+        int16_2_float_function_result resultStruct = reform_uint16_2_float32(regsRetStruct.HighReg, regsRetStruct.LowReg);
+        int16_2_float_function_result resultStruct_2 = reform_uint16_2_float32(regsRetStruct_2.HighReg, regsRetStruct_2.LowReg);
+        if ((resultStruct.validity == true) && (resultStruct_2.validity == true))
         {
-            skipCounter = 0;
-        if ((regsRetStruct.ErrorCode == (int16_t)ERR_LOC_BEGIN_FUNCTION_NOT_EXECUTED) ||
-            (regsRetStruct_2.ErrorCode == (int16_t)ERR_LOC_BEGIN_FUNCTION_NOT_EXECUTED))
-        {
+          ActCurrent = resultStruct.value;
+          ActPower = resultStruct_2.value;
+          dataContainer.SetNewValues(millis(), ActCurrent, ActPower, ActImportWork);
           #ifdef DebugPrint
-              Serial.println("ERROR: .begin function not executed in Setup");
-          #endif
-        }  
-        // Read 'Current' from the Smartmeter if its releaseTime has expired
-        if (readSummedCurrent.isReleased())
-        {
-          regsRetStruct = readSummedCurrent.get_2_InputRegisters(u8addr, FollowReleaseTimespan_Current_Ms, ForceState::RespectReleaseTime);
-          regsRetStruct_2 = readTotalPower.get_2_InputRegisters(u8addr, FollowReleaseTimespan_Power_Ms, ForceState::IgnoreReleaseTime);
-          if ((regsRetStruct.ErrorCode == (int16_t)ERR_SUCCESS) && (regsRetStruct_2.ErrorCode == (int16_t)ERR_SUCCESS))
-          {
-            //Calculate value as float and print out
-            int16_2_float_function_result resultStruct = reform_uint16_2_float32(regsRetStruct.HighReg, regsRetStruct.LowReg);
-            int16_2_float_function_result resultStruct_2 = reform_uint16_2_float32(regsRetStruct_2.HighReg, regsRetStruct_2.LowReg);
-            if ((resultStruct.validity == true) && (resultStruct_2.validity == true))
-            {
-              ActCurrent = resultStruct.value;
-              ActPower = resultStruct_2.value;
-              dataContainer.SetNewValues(millis(), ActCurrent, ActPower, ActImportWork);
-              #ifdef DebugPrint
-                Serial.println("  " + String(resultStruct.value, 4) + "  Amps");
-                Serial.println("  " + String(resultStruct_2.value, 4) + "  Watt");
-              #endif            
-            }
-            else
-            {
-              ActCurrent = NotValidValue;
-              ActPower = NotValidValue;
-              #ifdef DebugPrint
-                Serial.println("Current value not valid ");
-              #endif 
-            } 
-          }
-          else
-          {
-            ActCurrent = NotValidValue;
-            ActPower = NotValidValue;
-            #ifdef DebugPrint       
-              Serial.print("Reading Power failed. Error Code: " );
-              Serial.print((int16_t)regsRetStruct.ErrorCode);
-              Serial.println("");
-            #endif
-          }
-          
-        }
-        // Read 'Work' from the Smartmeter if its releaseTime has expired
-        if (readImportWork.isReleased() || isForcedReadInputWork)
-        {
-          ForceState forceState = isForcedReadInputWork ? IgnoreReleaseTime : RespectReleaseTime;
-          
-          isForcedReadInputWork = false;
-          
-          regsRetStruct = readImportWork.get_2_InputRegisters(u8addr, FollowReleaseTimespan_Work_Ms, forceState);
-          if (regsRetStruct.ErrorCode == (int16_t)ERR_SUCCESS)
-          {
-            //Calculate value as float and print out
-            ImpWorkLow = regsRetStruct.LowReg;
-            ImpWorkHigh = regsRetStruct.HighReg;
-            ActImportWork = (((uint32_t)regsRetStruct.HighReg) << 16) | regsRetStruct.LowReg;
-
-            int16_2_float_function_result resultStruct = reform_uint16_2_float32(regsRetStruct.HighReg, regsRetStruct.LowReg);
-            if (resultStruct.validity == true)
-            {
-              #ifdef DebugPrint
-                Serial.println("  " + String(resultStruct.value, 4) + "  KWh");
-              #endif                               
-            }
-            else
-            {
-              #ifdef DebugPrint
-                Serial.println("Work value not valid ");
-              #endif 
-            } 
-          }
-           else
-          {
-            ActImportWork = 0xffffffff;
-            #ifdef DebugPrint
-              Serial.print("Reading Work failed. Error Code: ");
-              Serial.print((int16_t)regsRetStruct.ErrorCode);
-              Serial.println("");
-            #endif           
-          }
-        }
-              
-        if (dataContainer.hasToBeSent())
-        {
-          sampleValues = dataContainer.getSampleValuesAndReset();
-          #ifdef DebugPrint
-            Serial.print("Valus from DataContainer: Current: ");
-            Serial.print(sampleValues.AverageCurrent);
-            Serial.print(" Amps ");
-            Serial.print(sampleValues.AveragePower);
-            Serial.print(" Watt ");
-          #endif
-          int16_2_float_function_result resultStruct = reform_uint16_2_float32(ImpWorkHigh, ImpWorkLow);
-          #ifdef DebugPrint
-            Serial.print(" " + String(resultStruct.value, 4) + "  kWh  ");
-          #endif
-          int dataState = 2;  // treat as data from the smartmeter
-          
-          // Current and Power is multilied by 100, take only the places before the decimal point
-          volatile uint32_t intCurrent = (uint32_t)round(abs(sampleValues.AverageCurrent * 100));
-          volatile uint32_t intPower = (uint32_t)round(abs(sampleValues.AveragePower * 100));
-          
-          // Work is transmitted as two uint16_t values as higher and lower bytes in one uint32_t number
-          volatile uint32_t intWork = ImpWorkLow | (ImpWorkHigh << 16);
-          
-          if (sendMessage(dataState, dataState, intCurrent, intPower, intWork))
-          {
-            firstPacket = false;
-            repeatSendData = 0;
-          }
-          else
-          {
-            packetnum--;          
-            if (repeatSendData > maxRepeatSend)
-            {                   
-              repeatSendData = 0;           
-            }
-            else
-            {          
-              repeatSendData++;
-         
-              lastMode = _mode;
-              setMode(RF69_MODE_STANDBY);
-              delay(3000);                 // Delay between repeats        
-              setMode(lastMode);
-            }
-          }
-          
-          #ifdef DebugPrint
-            Serial.print(sampleValues.EndTime_Ms - sampleValues.StartTime_Ms);         
-            Serial.print(" ms");
-            Serial.println("");
-          #endif
+            Serial.println("  " + String(resultStruct.value, 4) + "  Amps");
+            Serial.println("  " + String(resultStruct_2.value, 4) + "  Watt");
+          #endif            
         }
         else
         {
-          //Serial.println("Nothing to send");
+          ActCurrent = NotValidValue;
+          ActPower = NotValidValue;
+
+          #ifdef DebugPrint
+            Serial.println("Current value not valid ");
+          #endif 
+        } 
+      }
+      else
+      {
+        ActCurrent = NotValidValue;
+        ActPower = NotValidValue;
+
+        //RoSchmi to delete
+        //  dataContainer.SetNewValues(millis(), 1.0, 1.0, 0x52525252);
+        #ifdef DebugPrint       
+          Serial.print("Reading Power failed. Error Code: " );
+          Serial.print((int16_t)regsRetStruct.ErrorCode);
+          Serial.println("");
+          #endif
+      }         
+    }
+    // Read 'Work' from the Smartmeter if its releaseTime has expired
+    if (readImportWork.isReleased() || isForcedReadInputWork)
+      {
+        ForceState forceState = isForcedReadInputWork ? IgnoreReleaseTime : RespectReleaseTime;          
+        isForcedReadInputWork = false;          
+        regsRetStruct = readImportWork.get_2_InputRegisters(u8addr, FollowReleaseTimespan_Work_Ms, forceState);
+        if (regsRetStruct.ErrorCode == (int16_t)ERR_SUCCESS)
+        {
+          //Calculate value as float and print out
+          ImpWorkLow = regsRetStruct.LowReg;
+          ImpWorkHigh = regsRetStruct.HighReg;
+          ActImportWork = (((uint32_t)regsRetStruct.HighReg) << 16) | regsRetStruct.LowReg;
+
+          int16_2_float_function_result resultStruct = reform_uint16_2_float32(regsRetStruct.HighReg, regsRetStruct.LowReg);
+          if (resultStruct.validity == true)
+          {
+            #ifdef DebugPrint
+              Serial.println("  " + String(resultStruct.value, 4) + "  KWh");
+            #endif                               
+          }
+          else
+          {
+            #ifdef DebugPrint
+              Serial.println("Work value not valid ");
+            #endif 
+          } 
         }
-        Serial1.flush();
+        else
+        {
+          ActImportWork = 0xffffffff;
+          #ifdef DebugPrint
+            Serial.print("Reading Work failed. Error Code: ");
+            Serial.print((int16_t)regsRetStruct.ErrorCode);
+            Serial.println("");
+          #endif           
+        }
+      }
+              
+      if (dataContainer.hasToBeSent())
+      {
+        sampleValues = dataContainer.getSampleValuesAndReset();
+        #ifdef DebugPrint
+          Serial.print("Valus from DataContainer: Current: ");
+          Serial.print(sampleValues.AverageCurrent);
+          Serial.print(" Amps ");
+          Serial.print(sampleValues.AveragePower);
+          Serial.print(" Watt ");
+        #endif
         
+        #ifdef DebugPrint
+          int16_2_float_function_result resultStruct = reform_uint16_2_float32(ImpWorkHigh, ImpWorkLow);
+          Serial.print(" " + String(resultStruct.value, 4) + "  kWh  ");
+        #endif
+        int dataState = 2;  // treat as data from the smartmeter
+          
+        // Current and Power is multilied by 100, take only the places before the decimal point
+        volatile uint32_t intCurrent = (uint32_t)round(abs(sampleValues.AverageCurrent * 100));
+        volatile uint32_t intPower = (uint32_t)round(abs(sampleValues.AveragePower * 100));
+          
+        // Work is transmitted as two uint16_t values as higher and lower bytes in one uint32_t number
+        volatile uint32_t intWork = ImpWorkLow | (ImpWorkHigh << 16);
+          
+        if (sendMessage(dataState, dataState, sampleValues.EndTime_Ms - sampleValues.StartTime_Ms, intCurrent, intPower, intWork))
+        {
+          firstPacket = false;
+          repeatSendData = 0;
         }
-        skipCounter++;
+        else
+        {
+          packetnum--;          
+          if (repeatSendData > maxRepeatSend)
+          {                   
+            repeatSendData = 0;           
+          }
+          else
+          {          
+            repeatSendData++;        
+            lastMode = _mode;
+            setMode(RF69_MODE_STANDBY);
+            delay(3000);                 // Delay between repeats        
+            setMode(lastMode);
+          }
+        }
+          
+        #ifdef DebugPrint
+          Serial.print(sampleValues.EndTime_Ms - sampleValues.StartTime_Ms);         
+          Serial.print(" ms");
+          Serial.println("");
+        #endif
+      }
+      else
+      {
+        //Serial.println("Nothing to send");
+      }
+      Serial1.flush();       
+  }
+  skipCounter++;
 
   receiveDone(); //put radio in RX mode
   Serial.flush(); //make sure all serial data is clocked out before sleeping the MCU
@@ -1817,11 +1821,12 @@ void loop()
 
 
 //bool sendMessage(int pActState, int pOldState, uint32_t pCurrent, u_int32_t pPower, uint16_t pWork_High, uint16_t pWork_Low)
-bool sendMessage(int pActState, int pOldState, uint32_t pCurrent, u_int32_t pPower, uint32_t pWork)
+bool sendMessage(int pActState, int pOldState, uint32_t pTimeFromLast_MS, uint32_t pCurrent, u_int32_t pPower, uint32_t pWork)
 {     
       // Warning: Writing behind the end is managed through union with Char[27]
       // see definition
       
+      uint16_t timeFromLast_Min = pTimeFromLast_MS / 60000;
     
       packetnum++;
       packetnum = packetnum & 0x00FF;
@@ -1833,7 +1838,7 @@ bool sendMessage(int pActState, int pOldState, uint32_t pCurrent, u_int32_t pPow
       }
       else
       {
-        sendInfo = packetnum * 10;
+        sendInfo = timeFromLast_Min * 10;
       }
          
       sendInfo = sendInfo + repeatSend;

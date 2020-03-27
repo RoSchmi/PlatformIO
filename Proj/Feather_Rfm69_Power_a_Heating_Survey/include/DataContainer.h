@@ -65,9 +65,9 @@ class DataContainer
 
        
     private:
-      uint32_t ActSampleTime_Ms;
-      uint32_t LastSampleTime_Ms;
-      uint32_t LastSendTime_Ms;
+      volatile uint32_t ActSampleTime_Ms;
+      volatile uint32_t LastSampleTime_Ms;
+      volatile uint32_t LastSendTime_Ms;
       uint32_t AveragingTimespan_Ms;
       uint32_t MaxSendInterval_Ms;
       TriggerDeviation PercentDeviationLevel;
@@ -85,7 +85,7 @@ class DataContainer
 
       uint32_t ActImportWorkUint32;
 
-      bool _hasToBeSent;
+      volatile bool _hasToBeSent;
       bool isFirstTransmission;
 
       SampleValues sampleValues;
