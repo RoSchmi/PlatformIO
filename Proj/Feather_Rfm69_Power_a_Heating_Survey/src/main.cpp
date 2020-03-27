@@ -1276,6 +1276,7 @@ int16_t val_3 = 3;
  
 volatile int repeatSend = 0;
 volatile int repeatSendData = 0;
+bool sendDataIsPending = false;
 int maxRepeatSend = 7;   // if no sending success, sending is repeated maxRepeatSend times with time between of 3 sec
 
 volatile int8_t lastMode;
@@ -1291,14 +1292,12 @@ union Radiopackets
 
 Radiopackets packets; 
 
-volatile int16_t sendInfo = 0;
-
 // Forward declarations:
 uint8_t initialize(uint8_t freqBand, uint8_t nodeID, uint8_t networkID);
 void setHighPower(bool onOff);
 void setPowerLevel(uint8_t powerLevel);
 void encrypt(const char* key);
-bool sendMessage(int pActState, int pOldState, uint32_t pTimeFromLast_MS = 0, uint32_t pCurrent = 0, uint32_t pPower = 0, uint32_t pWork= 0);
+bool sendMessage(int pActState, int pOldState, uint16_t pRepeatSend, uint32_t pTimeFromLast_MS = 0, uint32_t pCurrent = 0, uint32_t pPower = 0, uint32_t pWork= 0);
 void setMode(uint8_t newMode);
 bool receiveDone();
 bool sendWithRetry(uint8_t toAddress, const void* buffer, uint8_t bufferSize, uint8_t retries, uint8_t retryWaitTime); 
@@ -1345,7 +1344,8 @@ float ActPower = NotValidValue;
 uint32_t ActImportWork = 0;
 uint16_t ImpWorkHigh;
 uint16_t ImpWorkLow;
-SampleValues sampleValues;
+SampleValues sampleValues = SampleValues();
+SampleValues sampleValuesCopy = SampleValues();
 bool isForcedReadInputWork = true;
 //Call Constructor of DataContainer
 // Parameters means: send at least every 10 min or if the deviation is more than 10% or more than 0.2 Amps
@@ -1510,8 +1510,8 @@ void setup()
   //*************************************************************************
 
   // actState and oldstate are set to 1 initially
-  
-  while (!sendMessage(actState, oldState))
+  repeatSend = 0;
+  while (!sendMessage(actState, oldState, repeatSend))
   {
      lastMode = _mode;
      setMode(RF69_MODE_STANDBY);  // Prevent the delay from beeing interrupted by interrupts from the radio, 
@@ -1519,7 +1519,9 @@ void setup()
      delay(180000);  // Wait 180 seconds before the next try to connect to the Gateway via Rfm69 (normal)
      //delay(5000);  // Wait 5 seconds before the next try (for tests)
      setMode(lastMode);            // Restore previous mode
+     repeatSend++;
   }
+  repeatSend = 0;
 
   //Another blinky sequence to show progress of programm
   Blink(LED, 200, 10);
@@ -1588,7 +1590,7 @@ void loop()
           actState = 0;
           //Serial.println("Pump is on");
           skipCounter = 0;
-          if (sendMessage(actState, oldState))
+          if (sendMessage(actState, oldState, repeatSend))
           { 
             firstPacket = false;               
             oldState = 0;                       
@@ -1632,7 +1634,7 @@ void loop()
         actState = 1;
         //Serial.println("Pump is off");
         skipCounter = 0;
-        if (sendMessage(actState, oldState))
+        if (sendMessage(actState, oldState, repeatSend))
         {
           firstPacket = false;
           oldState = 1;      
@@ -1718,45 +1720,75 @@ void loop()
     }
     // Read 'Work' from the Smartmeter if its releaseTime has expired
     if (readImportWork.isReleased() || isForcedReadInputWork)
+    {
+      ForceState forceState = isForcedReadInputWork ? IgnoreReleaseTime : RespectReleaseTime;          
+      isForcedReadInputWork = false;          
+      regsRetStruct = readImportWork.get_2_InputRegisters(u8addr, FollowReleaseTimespan_Work_Ms, forceState);
+      if (regsRetStruct.ErrorCode == (int16_t)ERR_SUCCESS)
       {
-        ForceState forceState = isForcedReadInputWork ? IgnoreReleaseTime : RespectReleaseTime;          
-        isForcedReadInputWork = false;          
-        regsRetStruct = readImportWork.get_2_InputRegisters(u8addr, FollowReleaseTimespan_Work_Ms, forceState);
-        if (regsRetStruct.ErrorCode == (int16_t)ERR_SUCCESS)
-        {
-          //Calculate value as float and print out
-          ImpWorkLow = regsRetStruct.LowReg;
-          ImpWorkHigh = regsRetStruct.HighReg;
-          ActImportWork = (((uint32_t)regsRetStruct.HighReg) << 16) | regsRetStruct.LowReg;
+        //Calculate value as float and print out
+        ImpWorkLow = regsRetStruct.LowReg;
+        ImpWorkHigh = regsRetStruct.HighReg;
+        ActImportWork = (((uint32_t)regsRetStruct.HighReg) << 16) | regsRetStruct.LowReg;
 
-          int16_2_float_function_result resultStruct = reform_uint16_2_float32(regsRetStruct.HighReg, regsRetStruct.LowReg);
-          if (resultStruct.validity == true)
-          {
-            #ifdef DebugPrint
-              Serial.println("  " + String(resultStruct.value, 4) + "  KWh");
-            #endif                               
-          }
-          else
-          {
-            #ifdef DebugPrint
-              Serial.println("Work value not valid ");
-            #endif 
-          } 
+        int16_2_float_function_result resultStruct = reform_uint16_2_float32(regsRetStruct.HighReg, regsRetStruct.LowReg);
+        if (resultStruct.validity == true)
+        {
+          #ifdef DebugPrint
+            Serial.println("  " + String(resultStruct.value, 4) + "  KWh");
+          #endif                               
         }
         else
         {
-          ActImportWork = 0xffffffff;
           #ifdef DebugPrint
-            Serial.print("Reading Work failed. Error Code: ");
-            Serial.print((int16_t)regsRetStruct.ErrorCode);
-            Serial.println("");
-          #endif           
-        }
+            Serial.println("Work value not valid ");
+          #endif 
+        } 
       }
-              
+      else
+      {
+        ActImportWork = 0xffffffff;
+        #ifdef DebugPrint
+          Serial.print("Reading Work failed. Error Code: ");
+          Serial.print((int16_t)regsRetStruct.ErrorCode);
+          Serial.println("");
+        #endif           
+      }
+    }
+
+    if (sendDataIsPending)
+    {
+      lastMode = _mode;
+      setMode(RF69_MODE_STANDBY);
+      delay(3000);                 // Delay between repeats        
+      setMode(lastMode);
+      int dataState = 2;  // treat as data from the smartmeter       
+      volatile uint32_t intCurrent = (uint32_t)round(abs(sampleValuesCopy.AverageCurrent * 100));
+      volatile uint32_t intPower = (uint32_t)round(abs(sampleValuesCopy.AveragePower * 100));    
+      volatile uint32_t intWork = ImpWorkLow | (ImpWorkHigh << 16);
+      if (sendMessage(dataState, dataState, repeatSendData, sampleValuesCopy.EndTime_Ms - sampleValuesCopy.StartTime_Ms, intCurrent, intPower, intWork))
+      {
+        firstPacket = false;
+        repeatSendData = 0;
+        sendDataIsPending = false;
+      }
+      else
+      {
+        packetnum--;           
+        repeatSendData++;
+        if (repeatSendData > maxRepeatSend)
+        {
+          sendDataIsPending = false;   // give up to send
+          repeatSendData = 0;
+        }       
+      }
+    }    
+
       if (dataContainer.hasToBeSent())
       {
-        sampleValues = dataContainer.getSampleValuesAndReset();
+          sampleValues = dataContainer.getSampleValuesAndReset();
+          sampleValuesCopy = sampleValues;
+      
         #ifdef DebugPrint
           Serial.print("Valus from DataContainer: Current: ");
           Serial.print(sampleValues.AverageCurrent);
@@ -1778,26 +1810,23 @@ void loop()
         // Work is transmitted as two uint16_t values as higher and lower bytes in one uint32_t number
         volatile uint32_t intWork = ImpWorkLow | (ImpWorkHigh << 16);
           
-        if (sendMessage(dataState, dataState, sampleValues.EndTime_Ms - sampleValues.StartTime_Ms, intCurrent, intPower, intWork))
+        if (sendMessage(dataState, dataState, repeatSendData, sampleValues.EndTime_Ms - sampleValues.StartTime_Ms, intCurrent, intPower, intWork))
         {
           firstPacket = false;
           repeatSendData = 0;
         }
         else
         {
-          packetnum--;          
-          if (repeatSendData > maxRepeatSend)
-          {                   
-            repeatSendData = 0;           
-          }
-          else
-          {          
-            repeatSendData++;        
-            lastMode = _mode;
-            setMode(RF69_MODE_STANDBY);
-            delay(3000);                 // Delay between repeats        
-            setMode(lastMode);
-          }
+          packetnum--;           
+          repeatSendData++;
+          sendDataIsPending = true;
+          /*
+          lastMode = _mode;
+          setMode(RF69_MODE_STANDBY);
+          delay(3000);                 // Delay between repeats        
+          setMode(lastMode);
+          */
+
         }
           
         #ifdef DebugPrint
@@ -1810,6 +1839,7 @@ void loop()
       {
         //Serial.println("Nothing to send");
       }
+      
       Serial1.flush();       
   }
   skipCounter++;
@@ -1821,12 +1851,13 @@ void loop()
 
 
 //bool sendMessage(int pActState, int pOldState, uint32_t pCurrent, u_int32_t pPower, uint16_t pWork_High, uint16_t pWork_Low)
-bool sendMessage(int pActState, int pOldState, uint32_t pTimeFromLast_MS, uint32_t pCurrent, u_int32_t pPower, uint32_t pWork)
+bool sendMessage(int pActState, int pOldState, uint16_t pRepeatSend, uint32_t pTimeFromLast_MS, uint32_t pCurrent, u_int32_t pPower, uint32_t pWork)
 {     
       // Warning: Writing behind the end is managed through union with Char[27]
       // see definition
       
       uint16_t timeFromLast_Min = pTimeFromLast_MS / 60000;
+      volatile int16_t sendInfo = 0;
     
       packetnum++;
       packetnum = packetnum & 0x00FF;
@@ -1841,7 +1872,7 @@ bool sendMessage(int pActState, int pOldState, uint32_t pTimeFromLast_MS, uint32
         sendInfo = timeFromLast_Min * 10;
       }
          
-      sendInfo = sendInfo + repeatSend;
+      sendInfo = sendInfo + pRepeatSend;
 
       #ifdef DebugPrint    
       Serial.print("SendInfo: "); Serial.println(sendInfo);
