@@ -1273,6 +1273,8 @@ volatile int actState = 1;
 int16_t val_1 = 0;   // These val_1 to val_3 are sent to the master,  the actual values are only as example (must be changed)
 int16_t val_2 = 2;
 int16_t val_3 = 3;
+
+uint32_t lastSend_Ms;
  
 volatile int repeatSend = 0;
 volatile int repeatSendData = 0;
@@ -1513,11 +1515,19 @@ void setup()
   repeatSend = 0;
   while (!sendMessage(actState, oldState, repeatSend))
   {
+     lastSend_Ms = millis();
      lastMode = _mode;
      setMode(RF69_MODE_STANDBY);  // Prevent the delay from beeing interrupted by interrupts from the radio, 
-                                //otherweise the delay never returns      
-     delay(180000);  // Wait 180 seconds before the next try to connect to the Gateway via Rfm69 (normal)
-     //delay(5000);  // Wait 5 seconds before the next try (for tests)
+                                  //otherweise the delay never returns 
+     if (repeatSend < 10)
+     {
+        delay(3000);
+     }
+     else
+     {
+       delay(180000);  // Wait 180 seconds before the next try to connect to the Gateway via Rfm69 (normal)
+       repeatSend = 0;
+     }                                   
      setMode(lastMode);            // Restore previous mode
      repeatSend++;
   }
@@ -1547,8 +1557,6 @@ void loop()
     delay(50);
     digitalWrite(LED, LOW);
   } 
-   
-  
   setMode(lastMode);            // Restore previous mode
 
   /*
@@ -1576,22 +1584,26 @@ void loop()
      //Serial.println("Loop");
   #endif
   
-  if (digitalRead(12) == 0)   // Pump is on 
+  
+  //if (digitalRead(12) == 0)   // Pump is on 
+  if (digitalRead(12) == LOW)   // Pump is on 
   {
     lastMode = _mode;
     setMode(RF69_MODE_STANDBY);
     delay(150);
     setMode(lastMode);
     
-    if (digitalRead(12) == 0)   // Pump is still on
+    //if (digitalRead(12) == 0)   // Pump is still on
+    if (digitalRead(12) == LOW)   // Pump is still on
     {       
         if (oldState == 1)   // was off before
         {        
           actState = 0;
           //Serial.println("Pump is on");
-          skipCounter = 0;
-          if (sendMessage(actState, oldState, repeatSend))
-          { 
+          skipCounter = 0;          
+          if (sendMessage(actState, oldState, repeatSend, millis() - lastSend_Ms))         
+          {
+            lastSend_Ms = millis(); 
             firstPacket = false;               
             oldState = 0;                       
             repeatSend = 0;
@@ -1609,10 +1621,10 @@ void loop()
             repeatSend++;
          #ifdef DebugPrint
             Serial.print("Repeat "); Serial.println(repeatSend);
-         #endif   
+         #endif            
             lastMode = _mode;
             setMode(RF69_MODE_STANDBY);
-            delay(3000);                // Delay between repeats             
+            delay(3000);                // Delay between repeats                             
             setMode(lastMode);
             }
           }                    
@@ -1627,15 +1639,19 @@ void loop()
     setMode(RF69_MODE_STANDBY);
     delay(150);
     setMode(lastMode);    
-    if (digitalRead(12) != 0) // Pump is still off
+    //if (digitalRead(12) != 0) // Pump is still off
+    if (digitalRead(12) == HIGH) // Pump is still off
     {          
       if (oldState == 0)
-      {          
+      {                
         actState = 1;
+      
         //Serial.println("Pump is off");
         skipCounter = 0;
-        if (sendMessage(actState, oldState, repeatSend))
+       
+        if (sendMessage(actState, oldState, repeatSend, millis() - lastSend_Ms))
         {
+          lastSend_Ms = millis();
           firstPacket = false;
           oldState = 1;      
           repeatSend = 0; 
@@ -1656,7 +1672,7 @@ void loop()
          #endif   
             lastMode = _mode;
             setMode(RF69_MODE_STANDBY);
-            delay(3000);                 // Delay between repeats        
+            delay(3000);                 // Delay between repeats          
             setMode(lastMode);
           }
         }              
@@ -1664,6 +1680,8 @@ void loop()
     }
   }
   
+
+
   if (skipCounter > 5)       
   {
     skipCounter = 0;
@@ -1820,13 +1838,6 @@ void loop()
           packetnum--;           
           repeatSendData++;
           sendDataIsPending = true;
-          /*
-          lastMode = _mode;
-          setMode(RF69_MODE_STANDBY);
-          delay(3000);                 // Delay between repeats        
-          setMode(lastMode);
-          */
-
         }
           
         #ifdef DebugPrint
@@ -1857,6 +1868,8 @@ bool sendMessage(int pActState, int pOldState, uint16_t pRepeatSend, uint32_t pT
       // see definition
       
       uint16_t timeFromLast_Min = pTimeFromLast_MS / 60000;
+      // limit timeFromLast_Min to max 998 since 999 is magic number
+      timeFromLast_Min = timeFromLast_Min > 998 ? 998 : timeFromLast_Min;
       volatile int16_t sendInfo = 0;
     
       packetnum++;
@@ -1872,7 +1885,7 @@ bool sendMessage(int pActState, int pOldState, uint16_t pRepeatSend, uint32_t pT
         sendInfo = timeFromLast_Min * 10;
       }
          
-      sendInfo = sendInfo + pRepeatSend;
+      sendInfo = sendInfo + ((pRepeatSend > 9) ? 9 : pRepeatSend);
 
       #ifdef DebugPrint    
       Serial.print("SendInfo: "); Serial.println(sendInfo);
