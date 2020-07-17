@@ -12,7 +12,7 @@
 // send to the gateway
 
 // The Gateway is a FEZ Spider Board with an Rfm96 Module attached, running the Application
-// 'HeatingCurrentSurfey' (https://github.com/RoSchmi/NETMFGadgeteer/tree/master/HeatingCurrentSurvey)
+// 'HeatingCurrentSurvey' (https://github.com/RoSchmi/NETMFGadgeteer/tree/master/HeatingCurrentSurvey)
 // The Gateway receives the massages and saves the messages in the Cloud (Azure Storage Tables) 
 
 // Debugging hints:
@@ -29,7 +29,7 @@
 // platformio.ini must contain the line: board = adafruit_feather_m0
 
 
-// This Application is an adaption from Felix Rusu's RFM69 library
+// This Application is an adaption of Felix Rusu's RFM69 library
 
 /* RFM69 library and code by Felix Rusu - felix@lowpowerlab.com
 // Get libraries at: https://github.com/LowPowerLab/
@@ -1874,8 +1874,10 @@ bool sendMessage(int pActState, int pOldState, uint16_t pRepeatSend, uint32_t pT
     
       packetnum++;
       packetnum = packetnum & 0x00FF;
-      // sendInfo is transmitted to the gateway for tests, first 3 digits are packetnum, last digit is repeatSend
-      
+      // sendInfo is transmitted to the gateway for monitoring of quality of transmission
+      // last digit is repeatSend (needed send tries til success - max. 10)
+      // first three digits = minutes since the last send (max. value = 998)
+      // first three digits = 999 (999 is magic number, means first send after booting the MCU)
       if (firstPacket)
       {
         sendInfo = 9990;   //Magic number signals first send after reboot, 
