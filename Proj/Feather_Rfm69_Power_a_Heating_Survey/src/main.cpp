@@ -1166,7 +1166,7 @@
 // Changed by RoSchmi from 40 to 150
 #define ACK_CSMA_LIMIT_MS   200     // for sending ACK: time in ms to wait for free environment to send
 
-#define RF69_MAX_DATA_LEN       61 // to take advantage of the built in AES/CRC we want to limit the frame siz 
+#define RF69_MAX_DATA_LEN       61 // to take advantage of the built in AES/CRC we want to limit the frame size 
 
 //*********************************************************************************************
 // *********** IMPORTANT SETTINGS - YOU MUST CHANGE/CONFIGURE TO FIT YOUR HARDWARE *************
@@ -1420,7 +1420,7 @@ void setup()
     while (!Serial); // wait until serial console is open, remove if not tethered to computer
   #endif
 
-  yield();
+  yield();   //Passes control to other tasks when called.
   Serial.println("Feather RFM69HCW Transmitter");
   //powerOn();
 
