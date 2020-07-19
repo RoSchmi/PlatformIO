@@ -1,7 +1,7 @@
 // Program 'Feather_Rfm69_Power_a_Heating_Survey'
 // Copyright RoSchmi, 2020. License: GNU General Public License
 // Mainboard Feather M0 Rfm69 433 MHz
-// Version 1.0 (23.03.2020) for SDM530MT Modbus HeatingCurrentSurvey Sensor 
+// Version 1.1 (20.07.2020) for SDM530MT Modbus HeatingCurrentSurvey Sensor 
 
 // This program reads Data (Currrent, Power and Work) from a SDM530MT Smartmeter
 // Current and Power values are read from the Smartmeter every 5 seconds via Modbus 
@@ -27,7 +27,6 @@
 
 // For 'Release' Version
 // platformio.ini must contain the line: board = adafruit_feather_m0
-
 
 // This Application is an adaption of Felix Rusu's RFM69 library
 
@@ -63,8 +62,13 @@
 // and copyright notices in any redistribution of this code
 // **********************************************************************************/
 
+// For WatchDogTimer see
+// https://www.hackster.io/voske65/watchdogtimer-library-for-arduino-zero-wdtzero-8d3cf4
+// https://github.com/javos65/WDTZero
+
 //#include <RFM69.h>    //get it here: https://www.github.com/lowpowerlab/rfm69
 #include <Arduino.h>
+#include "WDTZero.h"
 #include <SPI.h>
 #include <stdint.h>
 #include "wiring_private.h" // pinPeripheral() function
@@ -74,7 +78,8 @@
 #include "Read_2_InputRegisters.h"
 #include "DataContainer.h"
 
-//#define DebugPrint
+
+// #define DebugPrint
 
 //************************************************************
 #define REG_FIFO          0x00
@@ -1213,6 +1218,8 @@
 
 #define LED           13  // onboard blinky
 
+#define LED_2         10  // second LED to signal program states
+
 
 //bool digital_11_State = false;   // only for tests
 
@@ -1313,6 +1320,7 @@ void interruptHandler();
 void receiveBegin();
 void interruptHook(uint8_t CTLbyte);
 inline void maybeInterrupts();
+void myshutdown();
 
 /********* Values to be changed by User for Modbus Stuff  ********/
 const uint8_t SlaveAddress = 1;
@@ -1352,8 +1360,7 @@ bool isForcedReadInputWork = true;
 //Call Constructor of DataContainer
 // Parameters means: send at least every 10 min or if the deviation is more than 10% or more than 0.2 Amps
 // RoSchmi
-DataContainer dataContainer(5 * 60 * 1000, TriggerDeviation::PERCENT_10, TriggerDeviationAmps::AMPERE_02);
-//DataContainer dataContainer(60 * 1000, TriggerDeviation::PERCENT_10, TriggerDeviationAmps::AMPERE_02);
+DataContainer dataContainer(10 * 60 * 1000, TriggerDeviation::PERCENT_10, TriggerDeviationAmps::AMPERE_02);
 
 
 // not used in this example
@@ -1412,6 +1419,11 @@ Read_2_InputRegisters readImportWork(datagram, Import_Work_Address);
 Read_2_InputRegisters readSummedCurrent(datagram, Sum_of_Current_Address);
 Read_2_InputRegisters readTotalPower(datagram, TotalPower_Address);
 
+byte wdtCounter, wdtCounterReset;
+//WDTZero MyWatchDoggy(WDT_HARDCYCLE4S); // Define WDT with hard-Watchdog @ 4 seconds - hardstop when processor is stalled. Configure your soft-counter at .Setup(). 
+
+WDTZero MyWatchDoggy; // Define WDT with hard-Watchdog @ 4 seconds - hardstop when processor is stalled. Configure your soft-counter at .Setup(). 
+
 void setup() 
 {
   Serial.begin(SERIAL_BAUD);
@@ -1433,6 +1445,18 @@ void setup()
     digitalWrite(LED, LOW);
     delay(500);
   }
+
+  pinMode(LED_2, OUTPUT);  // only needed for tests and debugging
+
+  // Show that LED_2 is working
+  for (int i = 0; i < 4; i++)
+  {
+    digitalWrite(LED_2, HIGH);
+    delay(500);
+    digitalWrite(LED_2, LOW);
+    delay(500);
+  }
+
 
   // Serial port for Modbus transmission to Smartmeter
   host.begin(&mySerial, 2400, SERIAL_8N1); // baud-rate at 2400
@@ -1499,13 +1523,13 @@ void setup()
   Serial.println(" MHz");
 #endif
 
+// GPIO to toggle GPIO11 which can be connected with 12 (for tests)
+  pinMode(11, OUTPUT);
+
  //****************    Only for tests    ****************************
-  
-  // GPIO to toggle GPIO11 which can be connected with 12 (for tests)
-  //pinMode(11, OUTPUT);
 
   // Initially set Pump is on
-  //digitalWrite(11, LOW);
+  // digitalWrite(11, LOW);
   //#ifdef DebugPrint
   //Serial.println("Simulate: initially Pump is on");  
   //#endif
@@ -1543,6 +1567,11 @@ void setup()
   delay(15000);  // Wait x milliseconds between transmits, could also 'sleep' here!
   //delay(5000);  // Wait x milliseconds between transmits, could also 'sleep' here!
   setMode(lastMode);            // Restore previous mode
+
+  // Initialize Watchdog
+  MyWatchDoggy.attachShutdown(myshutdown);
+  MyWatchDoggy.setup(WDT_HARDCYCLE16S);  // initialize WDT-softcounter refesh cycle on 16sec interval
+  //MyWatchDoggy.setup(WDT_SOFTCYCLE32S);  // initialize WDT-softcounter refesh cycle on 32sec interval
 }
 
 void loop() 
@@ -1551,35 +1580,41 @@ void loop()
   setMode(RF69_MODE_STANDBY);  // Prevent the delay from beeing interrupted by interrupts from the radio, 
                                 //otherweise the delay never returns 
   delay(500);  // Wait x seconds between transmits, could also 'sleep' here!
+  MyWatchDoggy.clear();
+
   if (skipCounter > 5)    //Blink LED every 5 th round to signal that App is running
   {
     digitalWrite(LED, HIGH);
     delay(50);
     digitalWrite(LED, LOW);
+    //delay(20000);   // Outcommented! Only for test provokes a watchdog reboot
   } 
   setMode(lastMode);            // Restore previous mode
 
-  /*
+  
   // This is only for tests (simulates state-changes of input about every 20 sec)
+  
   Pin11Switchcounter++;
   if ((Pin11Switchcounter % 40) == 0)
   {
     if (digital_11_State)
-    {  
-      Serial.println("Set Low");  
+    {
+      #ifdef DebugPrint
+        Serial.println("Set Low");
+      #endif 
       digitalWrite(11, LOW);
       digital_11_State = false;
     }
     else
     { 
-      Serial.println("Set High");  
+      #ifdef DebugPrint
+        Serial.println("Set High");
+      #endif
       digitalWrite(11, HIGH);
-      digital_11_State = true;
+      digital_11_State = true;     
     } 
   }
-  */
-
-
+  
   #ifdef DebugPrint
      //Serial.println("Loop");
   #endif
@@ -1866,6 +1901,7 @@ bool sendMessage(int pActState, int pOldState, uint16_t pRepeatSend, uint32_t pT
 {     
       // Warning: Writing behind the end is managed through union with Char[27]
       // see definition
+      digitalWrite(LED_2, HIGH);  // signals that we are trying to send
       
       uint16_t timeFromLast_Min = pTimeFromLast_MS / 60000;
       // limit timeFromLast_Min to max 998 since 999 is magic number
@@ -1994,13 +2030,15 @@ bool sendMessage(int pActState, int pOldState, uint16_t pRepeatSend, uint32_t pT
         Serial.println("OK");
 #endif
         Blink(LED, 50, 3); //blink LED 3 times, 50ms between blinks
+        digitalWrite(LED_2, LOW);  // signals that we are leaving trying to send
         return true;
       }
       else
       {
 #ifdef DebugPrint       
       Serial.println("No Ack returned");
-#endif 
+#endif
+      digitalWrite(LED_2, LOW);  // signals that we are leaving trying to send
       return false;
       }  
 }
@@ -2665,6 +2703,13 @@ void setMode(uint8_t newMode)
 
   _mode = newMode;
 }
+void myshutdown()
+{
+  #ifdef DebugPrint
+    Serial.print("\nWe gonna shut down ! ...");
+  #endif
+}
+
 /*
 void SERCOM1_Handler()    // Interrupt handler for SERCOM1
 {
