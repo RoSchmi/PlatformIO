@@ -19,3 +19,8 @@ version above
 Reads data (Current, Power, Work) from a Eastron SDM530-MT Smartmeter and the On/Off state of a pump
 and transmits these data via Rfm69 radio transmission to an Internet Gateway (GHI FEZ Spider Board)
 which stores the data in the Cloud (Azure Storage Tables)
+
+### MoteinoReadAnalogRfm69
+App for MoteinoRfm96 board or Arduino pr mini. Reads analog values from three inputs, transforms voltage values to temperature values
+and sends values via radio transmission to an Internet Gateway (GHI FEZ Spider Board)
+(this is still work in rogress)
