@@ -21,6 +21,6 @@ and transmits these data via Rfm69 radio transmission to an Internet Gateway (GH
 which stores the data in the Cloud (Azure Storage Tables)
 
 ### MoteinoReadAnalogRfm69
-App for MoteinoRfm96 board or Arduino pr mini. Reads analog values from three inputs, transforms voltage values to temperature values
+App for MoteinoRfm69 board or Arduino pro mini. Reads analog values from three inputs, transforms voltage values to temperature values
 and sends values via radio transmission to an Internet Gateway (GHI FEZ Spider Board)
 (this is still work in rogress)
