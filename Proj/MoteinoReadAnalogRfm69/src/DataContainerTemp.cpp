@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include "DataContainerTemp.h"
 #include "math.h"
 #include "stdlib.h"
@@ -10,6 +11,7 @@ DataContainerTemp::DataContainerTemp(uint32_t pMaxSendInterval, TriggerDeviation
     ActSampleTime_Ms = 0,
     LastSampleTime_Ms = 0,
     LastSendTime_Ms = 0,
+    SampleCounter = 0;  
     AveragingTimespan_Ms = 60000,
     LastAverageCollectorTemp = 0,
     ActAverageCollectorTemp = 0,
@@ -19,73 +21,80 @@ DataContainerTemp::DataContainerTemp(uint32_t pMaxSendInterval, TriggerDeviation
     SummedStorageTemp = 0,
     LastAverageWaterTemp = 0,
     ActAverageWaterTemp = 0,
-    SummedWaterTemp = 0,
-
-
-    //ActImportWorkUint32 = 0,
+    SummedWaterTemp = 0,  
     _hasToBeSent = false,
     isFirstTransmission = true;
 }
 
-//void DataContainerTemp::SetNewValues(uint32_t pActSampleTime, float pActCurrent, float pActStorageTemp, uint32_t pActImportWorkUint32)
 void DataContainerTemp::SetNewValues(uint32_t pActSampleTime, float pActCollectorTemp, float pActStorageTemp, float pActWaterTemp)
 {
     if (isFirstTransmission)
     {
+        SampleCounter++;
+
         LastSampleTime_Ms = pActSampleTime - 1;   
         LastSendTime_Ms = pActSampleTime - 1;
 
         ActAverageCollectorTemp = pActCollectorTemp;       
-        LastAverageCollectorTemp = pActCollectorTemp;        
-        SummedCollectorTemp = pActCollectorTemp * (pActSampleTime - LastSampleTime_Ms);
-        
+        LastAverageCollectorTemp = pActCollectorTemp;       
+        SummedCollectorTemp = pActCollectorTemp;
+
         ActAverageStorageTemp = pActStorageTemp;        
-        LastAverageStorageTemp = pActStorageTemp;      
-        SummedStorageTemp = pActStorageTemp  * (pActSampleTime - LastSampleTime_Ms);
+        LastAverageStorageTemp = pActStorageTemp;              
+        SummedStorageTemp = pActStorageTemp;
 
         ActAverageWaterTemp = pActWaterTemp;        
-        LastAverageWaterTemp = pActWaterTemp;      
-        SummedWaterTemp = pActWaterTemp  * (pActSampleTime - LastSampleTime_Ms);
+        LastAverageWaterTemp = pActWaterTemp;             
+        SummedWaterTemp = pActWaterTemp;
 
         isFirstTransmission = false;
         _hasToBeSent = true;
     }
     else
     {
-       
-        SummedCollectorTemp += pActCollectorTemp * (pActSampleTime - LastSampleTime_Ms);             
-        ActAverageCollectorTemp = SummedCollectorTemp / (pActSampleTime - LastSendTime_Ms);
-
-        SummedStorageTemp += pActStorageTemp * (pActSampleTime - LastSampleTime_Ms);                
-        ActAverageStorageTemp = SummedStorageTemp / (pActSampleTime - LastSendTime_Ms);
-
-        SummedWaterTemp += pActWaterTemp * (pActSampleTime - LastSampleTime_Ms);                
-        ActAverageWaterTemp = SummedWaterTemp / (pActSampleTime - LastSendTime_Ms);
+        SampleCounter++;
+        
+        SummedCollectorTemp += pActCollectorTemp;     
+        ActAverageCollectorTemp = SummedCollectorTemp / (float)SampleCounter;
+        
+        SummedStorageTemp += pActStorageTemp;       
+        ActAverageStorageTemp = SummedStorageTemp / (float)SampleCounter;
+        
+        SummedWaterTemp += pActWaterTemp;      
+        ActAverageWaterTemp = SummedWaterTemp / (float)SampleCounter;
 
         LastSampleTime_Ms = ActSampleTime_Ms;  
     }   
     ActSampleTime_Ms = pActSampleTime;
-    //ActMeasuredCurrent = pActCollectorTemp,
-    ActMeasuredCollectorTemp = pActCollectorTemp;
-    //ActMeasuredPower = pActStorageTemp;
-    ActMeasuredStorageTemp = pActStorageTemp;
-
-    //ActImportWorkUint32 = pActImportWorkUint32;
+    //RoSchmi, for debugging
+        /*
+        Serial.print("Calculation: ");
+        Serial.print(SummedCollectorTemp);
+        Serial.print(" ");
+        Serial.print(SampleCounter);
+        Serial.print(" ");
+        Serial.println(ActAverageCollectorTemp);
+        */
+    ActMeasuredCollectorTemp = pActCollectorTemp;   
+    ActMeasuredStorageTemp = pActStorageTemp;   
     ActMeasuredWaterTemp = pActWaterTemp;
-
-    //if((int32_t)(ActSampleTime_Ms - LastSendTime_Ms) > (int32_t)MaxSendInterval_Ms)
+  
     if((ActSampleTime_Ms - LastSendTime_Ms) > MaxSendInterval_Ms)
     {
-        
+        // RoSchmi, for debugging
+            /*
+            Serial.print("Timecalculation: ");
+            Serial.print(ActSampleTime_Ms - LastSendTime_Ms);
+            Serial.print(" ");
+            Serial.println(MaxSendInterval_Ms);
+            */
         LastAverageCollectorTemp = ActAverageCollectorTemp;      
         LastAverageStorageTemp = ActAverageStorageTemp;
         LastAverageWaterTemp = ActAverageWaterTemp;
         _hasToBeSent = true;
     }
 
-    
     float averageCollectorTempDiff = (ActAverageCollectorTemp - LastAverageCollectorTemp);
-    
     
     // Outcommented variables used for debugging
     // volatile int16_t thePercentLevel = (int16_t)PercentDeviationLevel;
@@ -123,10 +132,10 @@ SampleValues DataContainerTemp::getSampleValuesAndReset()
 {
     sampleValues.AverageCollectorTemp = ActAverageCollectorTemp;
     sampleValues.AverageStorageTemp = ActAverageStorageTemp;
-    sampleValues.AverageWaterTemp = ActAverageWaterTemp;
-    //sampleValues.ImportWork = ActImportWorkUint32;
+    sampleValues.AverageWaterTemp = ActAverageWaterTemp;  
     sampleValues.StartTime_Ms = LastSendTime_Ms;
-    sampleValues.EndTime_Ms = ActSampleTime_Ms;  
+    sampleValues.EndTime_Ms = ActSampleTime_Ms;
+    SampleCounter = 0;  
     LastSendTime_Ms = ActSampleTime_Ms;
     SummedCollectorTemp = 0;
     SummedStorageTemp = 0;

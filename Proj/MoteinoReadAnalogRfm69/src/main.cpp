@@ -7,13 +7,14 @@
 // is reached, new analog values are read, processed, and (optionally) displayed on OLED and console
 // and sent via Rfm96. Then "readIntervalCounter" is resetted.
 
+// Calibration:
 // To calculate for example temperature values from the analog readings
 // enter two X/Y Pairs to define the linear functions
 // e.g. in "CollectorSensorParams", "StorageSensorParams" and "WaterSensorParams"
 // the calculation is done in function "countsToValueFloat()
 // To test enter X-Values in the console and get corresponding Y-Values
 
-// Hint: Code example for uses with MCP3428
+// Hint: Code example for uses with MCP3428 A/D converter
 //https://github.com/ControlEverythingCommunity/MCP3428
 
 //#include <RFM69.h>    //get it here: https://www.github.com/lowpowerlab/rfm69
@@ -112,27 +113,28 @@ typedef struct curveValuePairs {
 // CollectorSensor = A1 (X3 in Solar-Controller)
 curveValuePairs CollectorSensorParams = {
                                     .Xmin_Counts = 399,     // reading low
-                                    .Xmax_Counts = 424,     // reading high
+                                    .Xmax_Counts = 530,     // reading high
                                     .Ymin_Value = 26,       // temperat. low
-                                    .Ymax_Value = 47        // temperat. high
+                                    .Ymax_Value = 138       // temperat. high
   };
 
   // StorageSensor = A2 (X1 in Solar-Controller)
   curveValuePairs StorageSensorParams = {
                                     .Xmin_Counts = 397,
-                                    .Xmax_Counts = 409,
+                                    .Xmax_Counts = 455,
                                     .Ymin_Value = 28,
-                                    .Ymax_Value = 35
+                                    .Ymax_Value = 72
   };
   // WaterSensor = A3 (X6 in Solar-Controller)
   curveValuePairs WaterSensorParams = {
                                     .Xmin_Counts = 416,
-                                    .Xmax_Counts = 450,
+                                    .Xmax_Counts = 428,
                                     .Ymin_Value = 42,
-                                    .Ymax_Value = 48
+                                    .Ymax_Value = 53
   };
 
 const int readIntervalLengthSec = 5;       // Interval determines how often sensors are read
+
 const int readIntervalMaxLengthSec = 3600; // not longer than 1 hour, should only be changed if needed
 int readIntervalCounter = 0;
 bool readIvcAccessIsAllowed = true;
@@ -1249,7 +1251,7 @@ boolean newData = false;
 
 #define RF69_CSMA_LIMIT_MS 1000
 #define RF69_TX_LIMIT_MS   1000      // for sendig message: time in ms to wait for free environment to send
-// Changed by RoSchmi from 40 to 150
+// Changed by RoSchmi from 40 to 200
 #define ACK_CSMA_LIMIT_MS   200     // for sending ACK: time in ms to wait for free environment to send
 
 #define RF69_MAX_DATA_LEN       61 // to take advantage of the built in AES/CRC we want to limit the frame size 
@@ -1304,11 +1306,6 @@ boolean newData = false;
 //#define RFM69_IRQ     2
 //#define RFM69_IRQN    0  // Pin 2 is IRQ 0!
 //#define RFM69_RST     9
-
-//#define LED           13  // onboard blinky
-
-//#define LED_2         10  // second LED to signal program states
-
 
 //bool digital_11_State = false;   // only for tests
 
@@ -1379,8 +1376,6 @@ int maxRepeatSend = 7;   // if no sending success, sending is repeated maxRepeat
 
 volatile int8_t lastMode;
 
-//int analogPin = 1;
-
 const int radioPacketLength = 27;
 union Radiopackets
 {
@@ -1399,6 +1394,7 @@ void showNewData();
 void recvWithEndMarker();
 void testdrawchar(void);
 float countsToValueFloat(int, curveValuePairs);
+uint32_t addValueAndMultiplyConvertToUint32(float, float, int);
 
 uint8_t initialize(uint8_t freqBand, uint8_t nodeID, uint8_t networkID);
 void setHighPower(bool onOff);
@@ -1431,39 +1427,21 @@ const uint32_t FollowReleaseTimespan_StorageTemp_Ms = 5000;     // Following 'St
 const uint32_t FollowReleaseTimespan_WaterTemp_Ms = 5000;      // Following 'Watertemp' reads after this time
 
 /********* end of values to be changed by User ****/
-/*
-// Some values with their Register Addresses that can be read from Smartmeter
-const uint16_t Phase_1_Current_Address = 0x0006;    //Phase 1 current
-const uint16_t Phase_2_Current_Address = 0x0008;    //Phase 2 current
-const uint16_t Phase_3_Current_Address = 0x000A;    //Phase 3 current
-const uint16_t Sum_of_Current_Address = 0x0030;     //Sum of line currents
-const uint16_t TotalPower_Address = 0x0034;         //Total System Power
-const uint16_t Import_Work_Address = 0x0048;        //Import Wh since last reset
-const uint16_t Export_Work_Address = 0x004A;        //Export Wh since last reset
-*/
-// data array for modbus network sharing
-//uint16_t au16data[16];
-//uint8_t u8addr;
 
 float NotValidValue = 999.9;
 float ActCollectorTemp = NotValidValue;
 float ActStorageTemp = NotValidValue;
 float ActWaterTemp = NotValidValue;
 
-//uint32_t ActImportWork = 0;
-
-//uint16_t ImpWorkHigh;
-//uint16_t ImpWorkLow;
-
 SampleValues sampleValues = SampleValues();
 SampleValues sampleValuesCopy = SampleValues();
 
 bool isForcedReadInputWork = true;
-//Call Constructor of DataContainer
-// Parameters means: send at least every 10 min or if the deviation is more than 10% or more than 0.2 Degrees
-// RoSchmi
-DataContainerTemp dataContainerTemp(1 * 60 * 1000L, TriggerDeviation::PERCENT_10, TriggerDeviationDegrees::UNITS_02);
 
+//Call Constructor of DataContainer
+// Parameters means: send at least every x min or if the deviation is more than 10% or more than 10° C
+
+DataContainerTemp dataContainerTemp(10 * 60 * 1000L, TriggerDeviation::PERCENT_10, TriggerDeviationDegrees::UNITS_10);
 
 // not used in this example
 #ifdef FEATHER_M0
@@ -1477,7 +1455,6 @@ static inline void powerOn(void)
         digitalWrite(kPowerOn, HIGH);
 }
 #endif
-
 
 uint16_t skipCounter = 0;
 
@@ -1566,7 +1543,7 @@ yield();   //Passes control to other tasks when called.
 
   _mode = RF69_MODE_STANDBY;     
   _promiscuousMode = false;
-  _powerLevel = 31;         // power output ranges from 0 (5dBm) to 31 (20dBm)
+  _powerLevel = 31;           // power output ranges from 0 (5dBm) to 31 (20dBm)
   //_powerLevel = 29;         // power output ranges from 0 (5dBm) to 31 (20dBm)
   _isRFM69HW = IS_RFM69HCW;
   _inISR = false;
@@ -1588,9 +1565,7 @@ yield();   //Passes control to other tasks when called.
 
   encrypt(ENCRYPTKEY);
   //encrypt(0);
-
-  
-  
+ 
 #ifdef DebugPrint
   Serial.print("\nTransmitting at ");
   Serial.print(FREQUENCY==RF69_433MHZ ? 433 : FREQUENCY==RF69_868MHZ ? 868 : 915);
@@ -1642,7 +1617,7 @@ yield();   //Passes control to other tasks when called.
   //delay(5000);  // Wait x milliseconds between transmits, could also 'sleep' here!
   setMode(lastMode);            // Restore previous mode
 
-  //wdt_enable(WDTO_8S);       // Enable Watchdog
+  // _enable(WDTO_8S);       // Enable Watchdog
 
  interval0.interval(1000, intervalPrint0); //delay,callback function (calling interval could be inside any function) 
 
@@ -1656,7 +1631,7 @@ void loop() {
                                 //otherweise the delay never returns 
   delay(500);  // Wait x seconds between transmits, could also 'sleep' here!
 
-  //wdt_reset();  // Reset watchdog
+  // wdt_reset();  // Reset watchdog
   
   if (skipCounter > 5)    //Blink LED every 5 th round to signal that App is running
   {
@@ -1674,8 +1649,7 @@ void loop() {
   if (readIntervalCounter > readIntervalLengthSec)
   {
         readIvcAccessIsAllowed = false;
-
-        
+   
         // Read analog values and calculate temperature via curve of ..SensorParams
     	  valCollector = analogRead(CollectorAnalogPin);  // read the input pin
         valStorage = analogRead(StorageAnalogPin);
@@ -1755,11 +1729,32 @@ void loop() {
       delay(3000);                 // Delay between repeats        
       setMode(lastMode);
 
-      int dataState = 2;  // treat as data from the smartmeter
-
-      volatile uint32_t intCollectorTemp = (uint32_t)round(abs(sampleValuesCopy.AverageCollectorTemp * 10));
-      volatile uint32_t intStorageTemp = (uint32_t)round(abs(sampleValuesCopy.AverageStorageTemp * 10));
-      volatile uint32_t intWaterTemp = (uint32_t)round(abs(sampleValuesCopy.AverageWaterTemp * 10));
+      int dataState = 3;  // treat as data from the smartmeter
+      
+      // We add 70.0 degrees to the value to have only positive values (accordingly 70 is subtracted in the gateway)
+      // The App assumes that there will occur no negative temperatures below - 70°C
+      // Temperatures are multiplied by 10 and rounded, so we have one digit after the decimal point
+      
+      volatile uint32_t intCollectorTemp = addValueAndMultiplyConvertToUint32(sampleValues.AverageCollectorTemp, 70.0, 10);
+      // RoSchmi, for debuggin
+        
+        Serial.println("");
+        Serial.print("AverageCollectorTemp: ");
+        Serial.print(sampleValuesCopy.AverageCollectorTemp);
+        Serial.print(twoSpaces);
+        Serial.print(sampleValuesCopy.AverageCollectorTemp + 70.0, 2);
+        Serial.print(twoSpaces);
+        Serial.print((sampleValuesCopy.AverageCollectorTemp + 70.0) * 10, 2);    
+        Serial.print(twoSpaces);
+        Serial.print(round(abs((sampleValues.AverageCollectorTemp + 70.0)* 10)));
+        Serial.print(twoSpaces);
+        Serial.print((uint32_t)(round(abs((sampleValues.AverageCollectorTemp + 70.0)* 10))));
+        Serial.print(twoSpaces);
+        Serial.println(intCollectorTemp);
+        Serial.println("");
+           
+      volatile uint32_t intStorageTemp = addValueAndMultiplyConvertToUint32(sampleValues.AverageStorageTemp, 70.0, 10);   
+      volatile uint32_t intWaterTemp = addValueAndMultiplyConvertToUint32(sampleValues.AverageWaterTemp, 70.0, 10);
 
       if (sendMessage(dataState, dataState, repeatSendData, sampleValuesCopy.EndTime_Ms - sampleValuesCopy.StartTime_Ms, intCollectorTemp, intStorageTemp, intWaterTemp))
       {
@@ -1784,25 +1779,43 @@ void loop() {
           sampleValues = dataContainerTemp.getSampleValuesAndReset();
           sampleValuesCopy = sampleValues;
           
-        #ifdef DebugPrint
-          //Serial.print("Valus from DataContainer: CollectorTemp: ");
-          Serial.print("Valus from DataContainer: CollectorTemp: ");        
-          Serial.print(sampleValues.AverageCollectorTemp);
+        #ifdef DebugPrint          
+          Serial.print("Values from DataContainer: CollectorTemp: ");        
+          Serial.print(sampleValuesCopy.AverageCollectorTemp);
           Serial.print(" °, ");
-          Serial.print(sampleValues.AverageStorageTemp);
+          Serial.print(sampleValuesCopy.AverageStorageTemp);
           Serial.print(" °, ");
-          Serial.print(sampleValues.AverageWaterTemp);
+          Serial.print(sampleValuesCopy.AverageWaterTemp);
           Serial.print(" ° ");
         #endif
         
-        int dataState = 2;  // treat as data from the SolarTemp-Sensors
-          
-        // Current and Power is multilied by 100, take only the places before the decimal point
-        // Temperatures are multiplied by 10, take only the places before the decimal point
-        volatile uint32_t intCollectorTemp = (uint32_t)round(abs(sampleValues.AverageCollectorTemp * 10));
-        volatile uint32_t intStorageTemp = (uint32_t)round(abs(sampleValues.AverageStorageTemp * 10));
-        volatile uint32_t intWaterTemp = (uint32_t)round(abs(sampleValues.AverageWaterTemp * 10));
-                   
+        int dataState = 3;  // treat as data from the SolarTemp-Sensors
+                
+        // We add 70.0 degrees to the value to have only positive values (accordingly 70 is subtracted in the gateway)
+        // The App assumes that there will occur no negative temperatures below - 70°C
+        // Temperatures are multiplied by 10 and rounded, so we have one digit after the decimal point
+     
+        volatile uint32_t intCollectorTemp = addValueAndMultiplyConvertToUint32(sampleValues.AverageCollectorTemp, 70.0, 10);
+// RoSchmi, for debugging
+      
+        Serial.println("");
+        Serial.print("AverageCollectorTemp: ");
+        Serial.print(sampleValuesCopy.AverageCollectorTemp);
+        Serial.print(twoSpaces);
+        Serial.print(sampleValuesCopy.AverageCollectorTemp + 70.0, 2);
+        Serial.print(twoSpaces);
+        Serial.print((sampleValuesCopy.AverageCollectorTemp + 70.0) * 10, 2);    
+        Serial.print(twoSpaces);
+        Serial.print(round(abs((sampleValuesCopy.AverageCollectorTemp + 70.0)* 10)));
+        Serial.print(twoSpaces);
+        Serial.print((uint32_t)(round(abs((sampleValuesCopy.AverageCollectorTemp + 70.0)* 10))));
+        Serial.print(twoSpaces);
+        Serial.println(intCollectorTemp);
+        Serial.println("");
+       
+        volatile uint32_t intStorageTemp = addValueAndMultiplyConvertToUint32(sampleValues.AverageStorageTemp, 70.0, 10);   
+        volatile uint32_t intWaterTemp = addValueAndMultiplyConvertToUint32(sampleValues.AverageWaterTemp, 70.0, 10);
+
         if (sendMessage(dataState, dataState, repeatSendData, sampleValues.EndTime_Ms - sampleValues.StartTime_Ms, intCollectorTemp, intStorageTemp, intWaterTemp))
         {
           firstPacket = false;
@@ -1836,32 +1849,43 @@ void loop() {
 
 }
 
+
+uint32_t addValueAndMultiplyConvertToUint32(float inValue, float addValue, int multValue)
+{
+  return (uint32_t)(round(abs((inValue + addValue) * multValue)));
+}
+
+
 float countsToValueFloat(int X_in, curveValuePairs cVP)
 {
     float slope = (cVP.Ymax_Value - cVP.Ymin_Value) / (cVP.Xmax_Counts - cVP.Xmin_Counts);
     float XinMalSlope = X_in * slope;
     float Ydisplacement =  cVP.Ymin_Value - cVP.Xmin_Counts * slope;
     
-    Serial.print("Slope = ");
-    Serial.println(slope,3);
-    Serial.print("X_in mal slope = ");
-    Serial.println(XinMalSlope, 3);
-    Serial.print("Displacement = ");
-    Serial.println(Ydisplacement, 3);
-    Serial.print("Function is: Y = ");
-    Serial.print(slope, 3);
-    Serial.print(" * X + ");
-    Serial.println(Ydisplacement, 3);       
+    #ifdef DebugPrint
+      Serial.print("Slope = ");
+      Serial.println(slope,3);
+      Serial.print("X_in mal slope = ");
+      Serial.println(XinMalSlope, 3);
+      Serial.print("Displacement = ");
+      Serial.println(Ydisplacement, 3);
+      Serial.print("Function is: Y = ");
+      Serial.print(slope, 3);
+      Serial.print(" * X + ");
+      Serial.println(Ydisplacement, 3);
+    #endif
+
     return XinMalSlope + Ydisplacement;
   }
 
+// is only for tests (calculate Degrees from analog readings)
+// you can type readings on the console, are used to get the calculated temperature
 void recvWithEndMarker() 
 {
   static byte ndx = 0;
   char endMarker = '\n';
   char rc;
- 
-  // if (Serial.available() > 0) {
+  
   while (Serial.available() > 0 && newData == false) 
   {
     rc = Serial.read();
@@ -1912,12 +1936,11 @@ void callbackWithArguments(char* msg1, int value1, String msg2, float value2) {
 }
 */
 
-//bool sendMessage(int pActState, int pOldState, uint32_t pCurrent, u_int32_t pPower, uint16_t pWork_High, uint16_t pWork_Low)
+// send values via Rfm69
 bool sendMessage(int pActState, int pOldState, uint16_t pRepeatSend, uint32_t pTimeFromLast_MS, uint32_t pCurrent, uint32_t pPower, uint32_t pWork)
 {     
       // Warning: Writing behind the end is managed through union with Char[27]
       // see definition
-      //digitalWrite(LED_2, HIGH);  // signals that we are trying to send
       
       uint16_t timeFromLast_Min = pTimeFromLast_MS / 60000;
       // limit timeFromLast_Min to max 998 since 999 is magic number
@@ -1944,26 +1967,25 @@ bool sendMessage(int pActState, int pOldState, uint16_t pRepeatSend, uint32_t pT
       #ifdef DebugPrint    
       Serial.print("SendInfo: "); Serial.println(sendInfo);
       #endif
-     
-     // sprintf(radiopacket, "%.3d %.1d %.1d %.4d %.4d %.4d\n", packetnum, pActState, pOldState, sendInfo, val_2, val_3);
+      
         sprintf(packets.radiopacket, "%.3d %.1d %.1d %.4d %.4d %.4d %.4d\n", packetnum, pActState, pOldState, sendInfo, 0, 0, 0);
         
         if (pActState > 1)
         {
-        // Current      
+        // Collector Temperature (Current in a former App)     
         packets.radiopacket[13] = (byte)(pCurrent >> 24) & 0x000000FF;
         packets.radiopacket[14] = (byte)(pCurrent >> 16) & 0x000000FF;
         packets.radiopacket[15] = (byte)(pCurrent >> 8) & 0x000000FF;
         packets.radiopacket[16] = (byte)pCurrent & 0x000000FF;
         
         
-        // Power        
+        // Storage Temperature (Power in a former App)        
         packets.radiopacket[18] = (byte)(pPower >> 24) & 0x000000FF;
         packets.radiopacket[19] = (byte)(pPower >> 16) & 0x000000FF;
         packets.radiopacket[20] = (byte)(pPower >> 8) & 0x000000FF;
         packets.radiopacket[21] = (byte)pPower & 0x000000FF;
 
-        // Work              
+        // Water Temperature (Work in a former App)            
         packets.radiopacket[23] = (byte)(pWork >> 24) & 0x000000FF;
         packets.radiopacket[24] = (byte)(pWork >> 16) & 0x000000FF;       
         packets.radiopacket[25] = (byte)(pWork >> 8) & 0x000000FF;
@@ -2046,7 +2068,7 @@ bool sendMessage(int pActState, int pOldState, uint16_t pRepeatSend, uint32_t pT
         Serial.println("OK");
 #endif
         Blink(LED, 50, 3); //blink LED 3 times, 50ms between blinks
-        //digitalWrite(LED_2, LOW);  // signals that we are leaving trying to send
+       
         return true;
       }
       else
@@ -2054,7 +2076,7 @@ bool sendMessage(int pActState, int pOldState, uint16_t pRepeatSend, uint32_t pT
 #ifdef DebugPrint       
       Serial.println("No Ack returned");
 #endif
-      //digitalWrite(LED_2, LOW);  // signals that we are leaving trying to send
+      
       return false;
       }  
 }

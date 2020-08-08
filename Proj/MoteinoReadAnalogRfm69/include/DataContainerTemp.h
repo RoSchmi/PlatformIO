@@ -10,8 +10,7 @@ typedef struct
 {
     float  AverageCollectorTemp;
     float AverageStorageTemp;
-    float AverageWaterTemp;
-    //uint32_t ImportWork;    
+    float AverageWaterTemp;       
     uint32_t StartTime_Ms;
     uint32_t EndTime_Ms; 
 }
@@ -76,6 +75,9 @@ class DataContainerTemp
       volatile uint32_t LastSendTime_Ms;
       uint32_t AveragingTimespan_Ms;
       uint32_t MaxSendInterval_Ms;
+
+      uint32_t SampleCounter;
+
       TriggerDeviation PercentDeviationLevel;
       TriggerDeviationDegrees UnitsDeviationLevel;
 
@@ -94,11 +96,8 @@ class DataContainerTemp
       float ActMeasuredWaterTemp;
       float SummedWaterTemp;
 
-      //uint32_t ActImportWorkUint32;
-
       volatile bool _hasToBeSent;
       bool isFirstTransmission;
 
       SampleValues sampleValues;
-
     };
