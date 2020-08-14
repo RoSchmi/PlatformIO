@@ -1,7 +1,7 @@
 // Program 'Feather_Rfm69_Power_a_Heating_Survey'
 // Copyright RoSchmi, 2020. License: GNU General Public License
 // Mainboard Feather M0 Rfm69 433 MHz
-// Version 1.1 (20.07.2020) for SDM530MT Modbus HeatingCurrentSurvey Sensor 
+// Version 1.1 (14.08.2020) for SDM530MT Modbus HeatingCurrentSurvey Sensor 
 
 // This program reads Data (Currrent, Power and Work) from a SDM530MT Smartmeter
 // Current and Power values are read from the Smartmeter every 5 seconds via Modbus 
@@ -19,8 +19,9 @@
 // https://community.platformio.org/t/problems-starting-debug-session-with-jlink-on-feather-m0/12291
 //
 
-// For debugging The bootloader must be overwritten (Fuse set to 0 Bytes- see link)
+// For debugging The bootloader must be overwritten (Fuse set to 0 Bytes- instead of 8192 Bytes, see link)
 // This can be done with Atmel Studio --> Tools --> Device Programming
+// USER_WORD_0.NVMCTRL_BOOTPROT = 0 Bytes instead of 8192 Bytes
 // For debugging with PlatformIO The file: adafruit_feather_m0_no_bootloader.json must be
 // in folder 'boards'
 // platformio.ini must contain the line: board = adafruit_feather_m0_no_bootloader

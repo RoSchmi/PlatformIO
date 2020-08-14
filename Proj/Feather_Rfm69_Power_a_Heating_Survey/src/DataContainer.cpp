@@ -9,6 +9,7 @@ DataContainer::DataContainer(uint32_t pMaxSendInterval, TriggerDeviation pPercen
     ActSampleTime_Ms = 0,
     LastSampleTime_Ms = 0,
     LastSendTime_Ms = 0,
+    SampleCounter = 0,
     AveragingTimespan_Ms = 60000,
     LastAverageCurrent = 0,
     ActAverageCurrent = 0,
@@ -25,37 +26,48 @@ void DataContainer::SetNewValues(uint32_t pActSampleTime, float pActCurrent, flo
 {
     if (isFirstTransmission)
     {
-        LastSampleTime_Ms = pActSampleTime - 1;
-        
+        SampleCounter++;
+        LastSampleTime_Ms = pActSampleTime - 1;       
         LastSendTime_Ms = pActSampleTime - 1;
+
         ActAverageCurrent = pActCurrent;
         LastAverageCurrent = pActCurrent;
-        SummedCurrents = pActCurrent * (pActSampleTime - LastSampleTime_Ms);
+        //SummedCurrents = pActCurrent * (pActSampleTime - LastSampleTime_Ms);
+        SummedCurrents = pActCurrent;
+
         ActAveragePower = pActPower;
         LastAveragePower = pActPower;
-        SummedPower = pActPower  * (pActSampleTime - LastSampleTime_Ms);   
+        //SummedPower = pActPower  * (pActSampleTime - LastSampleTime_Ms);
+        SummedPower = pActPower;
         isFirstTransmission = false;
         _hasToBeSent = true;
     }
     else
     {
-        SummedCurrents += pActCurrent * (pActSampleTime - LastSampleTime_Ms);       
-        ActAverageCurrent = SummedCurrents / (pActSampleTime - LastSendTime_Ms);
-        SummedPower += pActPower * (pActSampleTime - LastSampleTime_Ms);
-        //LastSampleTime_Ms = pActSampleTime;
+        SampleCounter++;
+        //SummedCurrents += pActCurrent * (pActSampleTime - LastSampleTime_Ms);
+        SummedCurrents += pActCurrent;     
+        //ActAverageCurrent = SummedCurrents / (pActSampleTime - LastSendTime_Ms);
+        ActAverageCurrent = SummedCurrents / (float)SampleCounter;
+
+        //SummedPower += pActPower * (pActSampleTime - LastSampleTime_Ms);
+        SummedPower += pActPower;
+        //ActAveragePower = SummedPower / (pActSampleTime - LastSendTime_Ms);
+        ActAveragePower = SummedPower / (float)SampleCounter;
+        
         LastSampleTime_Ms = ActSampleTime_Ms;
-        ActAveragePower = SummedPower / (pActSampleTime - LastSendTime_Ms);
+        
     }   
     ActSampleTime_Ms = pActSampleTime;
+
     ActMeasuredCurrent = pActCurrent,
     ActMeasuredPower = pActPower;
     ActImportWorkUint32 = pActImportWorkUint32;
-
-    //if((int32_t)(ActSampleTime_Ms - LastSendTime_Ms) > (int32_t)MaxSendInterval_Ms)
+  
     if((ActSampleTime_Ms - LastSendTime_Ms) > MaxSendInterval_Ms)
     {
         LastAverageCurrent = ActAverageCurrent;
-        // this was not before
+       
         LastAveragePower = ActAveragePower;
         _hasToBeSent = true;
     }
@@ -98,7 +110,8 @@ SampleValues DataContainer::getSampleValuesAndReset()
     sampleValues.AveragePower = ActAveragePower;
     sampleValues.ImportWork = ActImportWorkUint32;
     sampleValues.StartTime_Ms = LastSendTime_Ms;
-    sampleValues.EndTime_Ms = ActSampleTime_Ms;  
+    sampleValues.EndTime_Ms = ActSampleTime_Ms;
+    SampleCounter = 0; 
     LastSendTime_Ms = ActSampleTime_Ms;
     SummedCurrents = 0;
     SummedPower = 0;

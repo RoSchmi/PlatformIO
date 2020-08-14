@@ -70,6 +70,9 @@ class DataContainer
       volatile uint32_t LastSendTime_Ms;
       uint32_t AveragingTimespan_Ms;
       uint32_t MaxSendInterval_Ms;
+
+      uint32_t SampleCounter; 
+
       TriggerDeviation PercentDeviationLevel;
       TriggerDeviationAmps AmpereDeviationLevel;
 
