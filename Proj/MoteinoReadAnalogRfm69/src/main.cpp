@@ -1,4 +1,5 @@
 // Copyright RoSchmi 2020 License Apache V 2.0
+// MoteinoReadAnalogRfm69
 // This App for Moteino (or Arduino pro mini) reads analog signals from pins A1, 
 // A2 and A3 in intervals as determined in const "readIntervalLengthSec"
 // The library "TimeOut" is used to produce callbacks every second
