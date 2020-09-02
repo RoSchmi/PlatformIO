@@ -23,4 +23,10 @@ which stores the data in the Cloud (Azure Storage Tables)
 ### MoteinoReadAnalogRfm69
 App for MoteinoRfm69 board or Arduino pro mini. Reads analog values from three inputs, transforms voltage values to temperature values
 and sends values via radio transmission to an Internet Gateway (GHI FEZ Spider Board)
-(this is still work in rogress)
+
+### BrainPad_Blink_Button_Test
+Working example to program on PlatformIO for the BrainPad BP2 using SWD-Debugging with Segger J-Link Edu.
+
+Uses the Multicolor LED of the BrainPad and one of the Buttons.
+
+More features of the BrainPad are actually not explored.
