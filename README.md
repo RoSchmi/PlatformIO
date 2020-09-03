@@ -28,3 +28,7 @@ and sends values via radio transmission to an Internet Gateway (GHI FEZ Spider B
 Working example to program on PlatformIO for the BrainPad BP2 using SWD-Debugging with Segger J-Link Edu.
 Uses the Multicolor LED of the BrainPad and one of the Buttons.
 More features of the BrainPad are actually not explored.
+
+### Wio_Terminal_JLink_Debugging
+Example shows and explains how I got debugging with JLink on Seeed Wio Terminal working.
+There were some hacks needed to get it working
