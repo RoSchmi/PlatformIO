@@ -4,7 +4,7 @@
 !.gitignore
 
 ## Only include these folders
-!FreeFonts.h
+!Free_Fonts.h
 !README
 
 
