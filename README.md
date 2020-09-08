@@ -32,3 +32,6 @@ More features of the BrainPad are actually not explored.
 ### Wio_Terminal_JLink_Debugging
 Example shows and explains how I got debugging with JLink on Seeed Wio Terminal working.
 There were some hacks needed to get it working
+
+### Wio_Terminal_Seeed_Https_Example
+This is the example 'Readig Github Repositoy Stats from Wio Terminal' by Seeed Studio with minor modifications. It shows how to access internet resource via https protocol.
