@@ -1,0 +1,27 @@
+# .gitignore
+# Erstmal alles ignorieren
+*
+!.gitignore
+
+## Only include these folders
+!Free_Fonts.h
+!HTTPClient.h
+!README
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
