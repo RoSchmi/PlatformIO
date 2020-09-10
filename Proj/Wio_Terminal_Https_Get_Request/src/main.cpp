@@ -118,7 +118,8 @@ void setup() {
     IPAddress gatewayIp =  WiFi.gatewayIP();
     IPAddress subNetMask =  WiFi.subnetMask();
     IPAddress dnsServerIp = WiFi.dnsIP();
-    
+    current_text_line = 0;
+    tft.fillScreen(TFT_WHITE);
     lcd_log_line("> SUCCESS.");
     lcd_log_line((char*)localIpAddress.toString().c_str() );
     lcd_log_line((char*)gatewayIp.toString().c_str());
@@ -135,6 +136,10 @@ void setup() {
     
     lcd_log_line(ntp.formattedTime("%d. %B %Y")); // dd. Mmm yyyy
     lcd_log_line(ntp.formattedTime("%A %T"));
+
+    delay(1000);
+    current_text_line = 0;
+    tft.fillScreen(TFT_WHITE);
 
     //http.begin(wifi_client, "https://jsonplaceholder.typicode.com/posts?userId=1");
     http.begin(wifi_client, "jsonplaceholder.typicode.com", 443, "/posts?userId=1", true);
