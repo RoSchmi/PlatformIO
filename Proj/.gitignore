@@ -37,6 +37,9 @@
 !/Wio_Terminal_Https_Get_Request/
 !/Wio_Terminal_Https_Get_Request/**
 
+!/Wio_Terminal_Azure_DataSender_02/
+!/Wio_Terminal_Azure_DataSender_02/**
+
 
 
 

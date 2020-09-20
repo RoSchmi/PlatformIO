@@ -136,7 +136,7 @@ void setup() {
     
     lcd_log_line(ntp.formattedTime("%d. %B %Y")); // dd. Mmm yyyy
     lcd_log_line(ntp.formattedTime("%A %T"));
-
+    
     delay(1000);
     current_text_line = 0;
     tft.fillScreen(TFT_WHITE);
