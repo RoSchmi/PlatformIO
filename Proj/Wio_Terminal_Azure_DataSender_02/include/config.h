@@ -3,10 +3,6 @@
 #ifndef _CONFIG_H
 #define _CONFIG_H
 
-//typedef const char* X509Certificate;
-
-//typedef X509Certificate X509CertificateArray[2];
-
 const char *baltimore_root_ca =
 "-----BEGIN CERTIFICATE-----\n"
 "MIIDdzCCAl+gAwIBAgIEAgAAuTANBgkqhkiG9w0BAQUFADBaMQswCQYDVQQGEwJJ\n"

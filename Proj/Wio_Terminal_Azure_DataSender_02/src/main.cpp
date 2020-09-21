@@ -12,9 +12,6 @@
 #include "WiFiUdp.h"
 #include "NTP.h"
 
-//az_config_internal 
-//az_platform
-
 #include <azure/core/az_platform.h>
 //#include <platform.h>
 #include <azure/core/az_config_internal.h>
@@ -23,12 +20,10 @@
 
 //#include <curl/curl.h> // libcurl is our HTTP stack
 
-
 #include <az_wioterminal_roschmi.h> 
 
 #include <stdio.h>
 #include <stdlib.h>
-
 
 #include "HTTPClient.h"
 
@@ -59,8 +54,6 @@
 
 
 #include <azure/iot/az_iot_hub_client.h>
-//#include "azure/iot/az_iot_provisioning_client.h"
-
 
 #include <azure/iot/az_iot_common.h>
 
@@ -100,8 +93,6 @@ HTTPClient http;
 HTTPClient * httpPtr = &http;
 
 typedef const char* X509Certificate;
-
-//typedef X509Certificate X509CertificateArray[2];
 
 void lcd_log_line(char* line) {
     // clear line
@@ -332,7 +323,7 @@ void loop() {
  
 
 
-az_http_status_code createTable(CloudStorageAccount pCloudStorageAccount, X509CertificateArray pCaCerts, String pTableName)
+az_http_status_code createTable(CloudStorageAccount pCloudStorageAccount, X509Certificate pCaCert, String pTableName)
 {
   //CloudStorageAccount localCloudStorageAccount = pCloudStorageAccount;
   //TableClient table(localCloudStorageAccount void, &pCaCerts, myCertificateArray, &http, &wifi_client); // _debug, _debug_level);

@@ -1,3 +1,5 @@
+// This Class is only for tests, can be deleted
+
 #include <Arduino.h>
 
 #ifndef _CLOUDSTORAGEACCOUNT_H_

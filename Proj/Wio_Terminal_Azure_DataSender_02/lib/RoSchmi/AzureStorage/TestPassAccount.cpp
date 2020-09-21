@@ -1,3 +1,6 @@
+// This Class is only for tests, can be deleted
+
+
 #include <AzureStorage/CloudStorageAccount.h>
 #include <AzureStorage/TestPassAccount.h>
 
