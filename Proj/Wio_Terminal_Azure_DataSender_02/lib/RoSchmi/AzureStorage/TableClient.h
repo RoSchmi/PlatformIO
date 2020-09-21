@@ -1,12 +1,15 @@
-#include <Arduino.h>
+#include <AzureStorage/CloudStorageAccount.h>
+#include <WiFiClientSecure.h>
+#include <HTTPClient.h>
+//#include <config.h>
 
-#ifndef _CONFIG_H
-#define _CONFIG_H
+#ifndef _TABLECLIENT_H_
+#define _TABLECLIENT_H_
 
-//typedef const char* X509Certificate;
+typedef const char* X509Certificate;
 
-//typedef X509Certificate X509CertificateArray[2];
-
+typedef X509Certificate X509CertificateArray[2];
+/*
 const char *baltimore_root_ca =
 "-----BEGIN CERTIFICATE-----\n"
 "MIIDdzCCAl+gAwIBAgIEAgAAuTANBgkqhkiG9w0BAQUFADBaMQswCQYDVQQGEwJJ\n"
@@ -29,5 +32,31 @@ const char *baltimore_root_ca =
 "ksLi4xaNmjICq44Y3ekQEe5+NauQrz4wlHrQMz2nZQ/1/I6eYs9HRCwBXbsdtTLS\n"
 "R9I4LtD+gdwyah617jzV/OeBHRnDJELqYzmp\n"
 "-----END CERTIFICATE-----";
+*/
 
-#endif // _CONFIG_SECRET_H
+class TableClient
+{
+
+public:
+    //TableClient(CloudStorageAccount &account, X509CertificateArray &certArray, HTTPClient &httpClient, WiFiClientSecure &wifiClient);
+        //TableClient(CloudStorageAccount *account, X509CertificateArray *certArray, HTTPClient *httpClient, WiFiClientSecure *wifiClient);
+    //TableClient(CloudStorageAccount *account, X509CertificateArray *certArray, HTTPClient *httpClient);
+    TableClient(CloudStorageAccount *account, const char * caCert, HTTPClient *httpClient);
+    ~TableClient();
+    /*
+    String AccountName;
+    String AccountKey;
+    String UriEndPointBlob;
+    String UriEndPointQueue;
+    String UriEndPointTable;
+    */
+
+    void send();
+
+private:
+    
+};
+
+
+
+#endif 

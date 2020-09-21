@@ -2,6 +2,9 @@
 #include <config.h>
 #include <config_secret.h>
 
+#include <AzureStorage/CloudStorageAccount.h>
+#include <AzureStorage/TableClient.h>
+
 #include "az_iot_helpers.h"
 
 #include <WiFiClientSecure.h>
@@ -89,38 +92,16 @@ char strData[100];
 const char *ssid = IOT_CONFIG_WIFI_SSID;
 const char *password = IOT_CONFIG_WIFI_PASSWORD;
 
-
-
-/*
-const char *baltimore_root_ca =
-"-----BEGIN CERTIFICATE-----\n"
-"MIIDdzCCAl+gAwIBAgIEAgAAuTANBgkqhkiG9w0BAQUFADBaMQswCQYDVQQGEwJJ\n"
-"RTESMBAGA1UEChMJQmFsdGltb3JlMRMwEQYDVQQLEwpDeWJlclRydXN0MSIwIAYD\n"
-"VQQDExlCYWx0aW1vcmUgQ3liZXJUcnVzdCBSb290MB4XDTAwMDUxMjE4NDYwMFoX\n"
-"DTI1MDUxMjIzNTkwMFowWjELMAkGA1UEBhMCSUUxEjAQBgNVBAoTCUJhbHRpbW9y\n"
-"ZTETMBEGA1UECxMKQ3liZXJUcnVzdDEiMCAGA1UEAxMZQmFsdGltb3JlIEN5YmVy\n"
-"VHJ1c3QgUm9vdDCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAKMEuyKr\n"
-"mD1X6CZymrV51Cni4eiVgLGw41uOKymaZN+hXe2wCQVt2yguzmKiYv60iNoS6zjr\n"
-"IZ3AQSsBUnuId9Mcj8e6uYi1agnnc+gRQKfRzMpijS3ljwumUNKoUMMo6vWrJYeK\n"
-"mpYcqWe4PwzV9/lSEy/CG9VwcPCPwBLKBsua4dnKM3p31vjsufFoREJIE9LAwqSu\n"
-"XmD+tqYF/LTdB1kC1FkYmGP1pWPgkAx9XbIGevOF6uvUA65ehD5f/xXtabz5OTZy\n"
-"dc93Uk3zyZAsuT3lySNTPx8kmCFcB5kpvcY67Oduhjprl3RjM71oGDHweI12v/ye\n"
-"jl0qhqdNkNwnGjkCAwEAAaNFMEMwHQYDVR0OBBYEFOWdWTCCR1jMrPoIVDaGezq1\n"
-"BE3wMBIGA1UdEwEB/wQIMAYBAf8CAQMwDgYDVR0PAQH/BAQDAgEGMA0GCSqGSIb3\n"
-"DQEBBQUAA4IBAQCFDF2O5G9RaEIFoN27TyclhAO992T9Ldcw46QQF+vaKSm2eT92\n"
-"9hkTI7gQCvlYpNRhcL0EYWoSihfVCr3FvDB81ukMJY2GQE/szKN+OMY3EU/t3Wgx\n"
-"jkzSswF07r51XgdIGn9w/xZchMB5hbgF/X++ZRGjD8ACtPhSNzkE1akxehi/oCr0\n"
-"Epn3o0WC4zxe9Z2etciefC7IpJ5OCBRLbf1wbWsaY71k5h+3zvDyny67G7fyUIhz\n"
-"ksLi4xaNmjICq44Y3ekQEe5+NauQrz4wlHrQMz2nZQ/1/I6eYs9HRCwBXbsdtTLS\n"
-"R9I4LtD+gdwyah617jzV/OeBHRnDJELqYzmp\n"
-"-----END CERTIFICATE-----";
-*/
-
 WiFiClientSecure wifi_client;
 
 WiFiUDP wifiUdp;
 NTP ntp(wifiUdp);
 HTTPClient http;
+HTTPClient * httpPtr = &http;
+
+typedef const char* X509Certificate;
+
+//typedef X509Certificate X509CertificateArray[2];
 
 void lcd_log_line(char* line) {
     // clear line
@@ -134,6 +115,8 @@ void lcd_log_line(char* line) {
     }
 }
 void setup() {
+
+  
    tft.begin();
   tft.setRotation(3);
   tft.fillScreen(TFT_WHITE);
@@ -186,6 +169,13 @@ void setup() {
     lcd_log_line((char *)ntp.formattedTime("%d. %B %Y"));    // dd. Mmm yyyy
     lcd_log_line((char *)ntp.formattedTime("%A %T"));        // Www hh:mm:ss
 
+
+    CloudStorageAccount myCloudStorageAccount(AZURE_CONFIG_ACCOUNT_NAME, AZURE_CONFIG_ACCOUNT_KEY, true);
+    
+    CloudStorageAccount * myCloudStorageAccountPtr = &myCloudStorageAccount;
+
+    String myUriEntPoint =  myCloudStorageAccount.UriEndPointTable;
+
 // Example see  
 // https://github.com/Azure/azure-sdk-for-c/blob/5c7444dfcd5f0b3bcf3aec2f7b62639afc8bd664/sdk/samples/storage/blobs/src/blobs_client_example.c
 
@@ -228,7 +218,20 @@ delay(1000);
     //current_text_line = 0;
     //tft.fillScreen(TFT_WHITE);
 delay(100);
-    
+
+X509Certificate myX509Certificate = baltimore_root_ca;
+
+//X509CertificateArray myCertificateArray {baltimore_root_ca, baltimore_root_ca};
+//X509CertificateArray * myCertificateArrayPtr = &myCertificateArray;
+
+//TableClient table(&myCloudStorageAccount, &myCertificateArray, http, wifi_client);
+//TableClient table(myCloudStorageAccountPtr, myCertificateArrayPtr, http, wifi_client);
+//TableClient table(myCloudStorageAccountPtr, myCertificateArrayPtr, httpPtr);
+TableClient table(myCloudStorageAccountPtr, myX509Certificate, httpPtr);
+
+table.send();
+
+    /*
     http.begin(wifi_client, "jsonplaceholder.typicode.com", 443, "/posts?userId=1", true);
     //http.begin(wifi_client, "www.google.de", 443, "/", true);
     delay(100);
@@ -255,6 +258,8 @@ delay(100);
       volatile int dummy2 = 1;
       dummy2++;
     }
+    */
+
 
   /*
   //String respString = "HTTP/1.1 200 OK";
@@ -322,6 +327,29 @@ void loop() {
     //Serial.println(counter);
     counter++;
 }
+
+ //HttpStatusCode createTable(CloudStorageAccount pCloudStorageAccount, X509Certificate[] pCaCerts, string pTableName)
+ 
+
+
+az_http_status_code createTable(CloudStorageAccount pCloudStorageAccount, X509CertificateArray pCaCerts, String pTableName)
+{
+  //CloudStorageAccount localCloudStorageAccount = pCloudStorageAccount;
+  //TableClient table(localCloudStorageAccount void, &pCaCerts, myCertificateArray, &http, &wifi_client); // _debug, _debug_level);
+
+            // To use Fiddler as WebProxy include the following line. Use the local IP-Address of the PC where Fiddler is running
+            // see: -http://blog.devmobile.co.nz/2013/01/09/netmf-http-debugging-with-fiddler
+            /*
+            if (attachFiddler)
+            { table.attachFiddler(true, fiddlerIPAddress, fiddlerPort); }
+            */
+//az_http_status_code resultCode = table.CreateTable(pTableName, TableClient.ContType.applicationIatomIxml, TableClient.AcceptType.applicationIjson, TableClient.ResponseType.dont_returnContent, useSharedKeyLite: false);
+
+
+        //    HttpStatusCode resultCode = table.CreateTable(pTableName, TableClient.ContType.applicationIatomIxml, TableClient.AcceptType.applicationIjson, TableClient.ResponseType.dont_returnContent, useSharedKeyLite: false);
+         //   return resultCode;
+         return AZ_HTTP_STATUS_CODE_ACCEPTED;
+        }
 
 
 

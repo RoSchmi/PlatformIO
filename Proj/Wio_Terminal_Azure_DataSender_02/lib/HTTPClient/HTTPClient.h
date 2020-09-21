@@ -27,7 +27,7 @@
 #ifndef HTTPClient_H_
 #define HTTPClient_H_
 
-//#define HTTPCLIENT_1_1_COMPATIBLE
+#define HTTPCLIENT_1_1_COMPATIBLE
 
 #include <memory>
 #include <Arduino.h>
