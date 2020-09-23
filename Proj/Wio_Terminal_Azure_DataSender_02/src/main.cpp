@@ -11,6 +11,15 @@
 
 #include "WiFiUdp.h"
 #include "NTP.h"
+//#include "RTC_SAMD51.h"
+#include "DateTime.h"
+
+
+#include <AzureStorage/SysTime.h>
+
+
+
+#include <AzureStorage/TableClient.h>
 
 #include <azure/core/az_platform.h>
 //#include <platform.h>
@@ -92,6 +101,14 @@ NTP ntp(wifiUdp);
 HTTPClient http;
 HTTPClient * httpPtr = &http;
 
+
+static SysTime sysTime;
+
+//MySysTime->
+
+//MySysTime.
+//RTC_SAMD51 rtc;
+
 typedef const char* X509Certificate;
 
 void lcd_log_line(char* line) {
@@ -105,8 +122,15 @@ void lcd_log_line(char* line) {
       tft.fillScreen(TFT_WHITE);
     }
 }
-void setup() {
 
+// forward declarations
+  az_http_status_code  createTable(CloudStorageAccount *myCloudStorageAccountPtr, X509Certificate myX509Certificate, const char * tableName);
+az_http_status_code CreateTable( const char * tableName, ContType pContentType, AcceptType pAcceptType, ResponseType pResponseType, bool);
+//az_http_status_code CreateTable(const char * tableName, ContType pContentType = ContType::contApplicationIatomIxml, AcceptType pAcceptType = AcceptType::acceptApplicationIjson, ResponseType pResponseType = ResponseType::returnContent, bool useSharedKeyLight = false);
+
+void setup() {
+   
+   
   
    tft.begin();
   tft.setRotation(3);
@@ -124,7 +148,7 @@ void setup() {
     sprintf(buf, "Connecting to SSID: %s", ssid);
     lcd_log_line(buf);
     Serial.println(buf);
-    WiFi.enableIpV6();
+    //WiFi.enableIpV6();
     WiFi.begin(ssid, password);
 
     // attempt to connect to Wifi network:
@@ -155,11 +179,39 @@ void setup() {
     
     ntp.begin();
     ntp.update();
-    ntp.timeZone(1,0);
+    ntp.timeZone(0,0);
     
     lcd_log_line((char *)ntp.formattedTime("%d. %B %Y"));    // dd. Mmm yyyy
     lcd_log_line((char *)ntp.formattedTime("%A %T"));        // Www hh:mm:ss
 
+
+  
+    
+    //rtc.begin();
+
+    //DateTime now = DateTime(F(__DATE__), F(__TIME__));
+    //DateTime now = DateTime(F((char *)ntp.formattedTime("%d. %B %Y")), F((char *)ntp.formattedTime("%A %T")));
+    DateTime now = DateTime((uint16_t) ntp.year(), (uint8_t)ntp.month(), (uint8_t)ntp.day(),
+                (uint8_t)ntp.hours(), (uint8_t)ntp.minutes(), (uint8_t)ntp.seconds());
+
+    sysTime.begin(now);
+
+
+    //rtc.adjust(now);
+    now = sysTime.getTime();
+    //now = rtc.now();
+    while (true)
+    {
+      uint32_t startTime = millis();
+      while ((millis() - startTime) < 5000)
+      {
+
+      }
+      now = sysTime.getTime();
+      int theSecond = now.second();
+      sprintf(buf, "Hour is: %i", theSecond);
+      lcd_log_line(buf);
+    }
 
     CloudStorageAccount myCloudStorageAccount(AZURE_CONFIG_ACCOUNT_NAME, AZURE_CONFIG_ACCOUNT_KEY, true);
     
@@ -206,21 +258,23 @@ void setup() {
   }
 
 delay(1000);
-    //current_text_line = 0;
-    //tft.fillScreen(TFT_WHITE);
+    current_text_line = 0;
+    tft.fillScreen(TFT_WHITE);
 delay(100);
 
 X509Certificate myX509Certificate = baltimore_root_ca;
 
-//X509CertificateArray myCertificateArray {baltimore_root_ca, baltimore_root_ca};
-//X509CertificateArray * myCertificateArrayPtr = &myCertificateArray;
-
-//TableClient table(&myCloudStorageAccount, &myCertificateArray, http, wifi_client);
-//TableClient table(myCloudStorageAccountPtr, myCertificateArrayPtr, http, wifi_client);
-//TableClient table(myCloudStorageAccountPtr, myCertificateArrayPtr, httpPtr);
 TableClient table(myCloudStorageAccountPtr, myX509Certificate, httpPtr);
 
 table.send();
+
+//String tableName = "newtable";
+
+const char * tableName = "newtable";
+
+az_http_status_code theResult = createTable(myCloudStorageAccountPtr, myX509Certificate, tableName);
+
+//TableClient table(myCloudStorageAccountPtr, myX509Certificate, httpPtr);
 
     /*
     http.begin(wifi_client, "jsonplaceholder.typicode.com", 443, "/posts?userId=1", true);
@@ -323,10 +377,12 @@ void loop() {
  
 
 
-az_http_status_code createTable(CloudStorageAccount pCloudStorageAccount, X509Certificate pCaCert, String pTableName)
+az_http_status_code createTable(CloudStorageAccount *pAccountPtr, X509Certificate pCaCert, const char * pTableName)
 {
+   //TableClient(CloudStorageAccount *account, const char * caCert, HTTPClient *httpClient);
+  //TableClient table(myCloudStorageAccountPtr, myX509Certificate, httpPtr);
   //CloudStorageAccount localCloudStorageAccount = pCloudStorageAccount;
-  //TableClient table(localCloudStorageAccount void, &pCaCerts, myCertificateArray, &http, &wifi_client); // _debug, _debug_level);
+  TableClient table(pAccountPtr, pCaCert,  httpPtr); // _debug, _debug_level);
 
             // To use Fiddler as WebProxy include the following line. Use the local IP-Address of the PC where Fiddler is running
             // see: -http://blog.devmobile.co.nz/2013/01/09/netmf-http-debugging-with-fiddler
@@ -334,7 +390,7 @@ az_http_status_code createTable(CloudStorageAccount pCloudStorageAccount, X509Ce
             if (attachFiddler)
             { table.attachFiddler(true, fiddlerIPAddress, fiddlerPort); }
             */
-//az_http_status_code resultCode = table.CreateTable(pTableName, TableClient.ContType.applicationIatomIxml, TableClient.AcceptType.applicationIjson, TableClient.ResponseType.dont_returnContent, useSharedKeyLite: false);
+az_http_status_code resultCode = table.CreateTable(pTableName, contApplicationIatomIxml, acceptApplicationIjson, dont_returnContent);
 
 
         //    HttpStatusCode resultCode = table.CreateTable(pTableName, TableClient.ContType.applicationIatomIxml, TableClient.AcceptType.applicationIjson, TableClient.ResponseType.dont_returnContent, useSharedKeyLite: false);
