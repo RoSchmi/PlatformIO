@@ -1,7 +1,11 @@
+#include <Arduino.h>
 #include <AzureStorage/CloudStorageAccount.h>
 #include <HTTPClient.h>
 #include <AzureStorage/TableClient.h>
 #include <DateTime.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <Encryption/RoSchmi_encryption_helpers.h>
 
 
 String VersionHeader = "2015-04-05";
@@ -12,9 +16,10 @@ const char * _caCert;
 
 static SysTime sysTime;
 
-        char * _OperationResponseBody = "";
-        char * _OperationResponseMD5 = "";
-        char * _OperationResponseETag = "";
+        
+        char * _OperationResponseBody;
+        char * _OperationResponseMD5; 
+        char * _OperationResponseETag; 
 
         //private Hashtable _OperationResponseSingleQuery = null;
         //private ArrayList _OperationResponseQueryList = null;
@@ -23,14 +28,236 @@ static SysTime sysTime;
 
 // forward declarations
 String GetDateHeader();
+String getContentTypeString(ContType pContentType);
+String getAcceptTypeString(AcceptType pAcceptType);
+int base64_decode(const char * input, char * output);
 
-//DateTime myDateTime;
+//EncryptResults CreateTableAuthorizationHeader(char * content, char * canonicalResource, String ptimeStamp, String pHttpVerb, ContType pContentType, bool useSharedKeyLite);
+        
+        /*
+        String stringToHexString(const char * input, const char * delimiter = "")
+        {
+            const char _hexCharacterTable[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };  
+    
+            char chars[(strlen(input) * 2) + 1 + strlen(input - 1) * strlen(delimiter)];
+            int j = 0;
+                for (size_t i = 0; i < strlen(input); i++)
+                {
+                    chars[j++] = (char)_hexCharacterTable[(input[i] & 0xF0) >> 4];
+                    chars[j++] = (char)_hexCharacterTable[input[i] & 0x0F];
+                    
+                    if (i != (strlen(input) - 1))
+                    {                       
+                            for (size_t i = 0; i < strlen(delimiter); i++)
+                           {                            
+                            chars[j++] = delimiter[i];                            
+                           }                     
+                    }
+                    
+                }
+                chars[j] = '\0';
+                String returnValue = (char *)chars;
+                return returnValue;           
+        }
+        */
+
+        String TableClient::CreateTableAuthorizationHeader(char * content, char * canonicalResource, String ptimeStamp, String pHttpVerb, ContType pContentType, char * pMD5HashHex, char * pHash, int pHashLen, bool useSharedKeyLite)
+        {
+            String contentType = getContentTypeString(pContentType);
+                                                            
+            uint8_t sizeSHA256 = 32;
+                                  
+            if (!useSharedKeyLite)
+            {               
+                // How to produce Md5 hash:
+                //https://community.mongoose-os.com/t/md5-library-setup-and-config-examples/856
+
+                // To test the function, set content to "zestyr"
+                //content = (char *)"zestyr";    //hash is 'dd62788115086eac57fd27e9f6f0fa35'
+
+                // create Md5Hash           
+                size_t Md5HashStrLenght = 16 + 1;
+                char md5HashStr[Md5HashStrLenght] {0};
+                int create_Md5_result = createMd5Hash(md5HashStr, Md5HashStrLenght, content);
+                
+                // Convert to hex-string
+                stringToHexString(pMD5HashHex, md5HashStr, (const char *)"");
+                String theString = pMD5HashHex;
+                volatile int dummy345 = 1;     
+            }
+                        
+            //String toSign;
+            char buf[(strlen(canonicalResource) + 100)];
+            if (useSharedKeyLite)
+            {
+                
+                //sprintf(buf, "%s\%s", ptimeStamp, &canonicalResource);
+                sprintf(buf, "%s\%s", (char *)ptimeStamp.c_str(), canonicalResource);
+                //toSign = buf;              
+            }
+            else
+            {
+                sprintf(buf, "%s\n%s\n%s\n%s\n%s", (char *)pHttpVerb.c_str(), pMD5HashHex , (char *)contentType.c_str(), (char *)ptimeStamp.c_str(), canonicalResource);          
+                //toSign = buf;
+            }
+            
+            // Produce Authentication Header
+            // 1) Base64 decode the Azure Storage Key
+           
+            // Hoe to decode Base 64 String
+            //https://www.ncbi.nlm.nih.gov/IEB/ToolBox/CPP_DOC/lxr/source/src/connect/mbedtls/
+            
+            // Base64-decode (Azure Storage Key)
+                
+                char base64DecOut[80] {0};
+                int decodeResult = base64_decode(_accountPtr->AccountKey.c_str(), base64DecOut);
+                
+                size_t decodedKeyLen = (decodeResult != -1) ? decodeResult : 0; 
+               
+
+/*
+              volatile byte c0 = base64DecOut[0];
+              volatile byte c1 = base64DecOut[1];
+              volatile byte c2 = base64DecOut[2];
+              volatile byte c3 = base64DecOut[3];
+              volatile byte c4 = base64DecOut[4];
+              volatile byte c5 = base64DecOut[5];
+              volatile byte c6 = base64DecOut[6];
+              volatile byte c7 = base64DecOut[7];
+              volatile byte c8 = base64DecOut[8];
+              volatile byte c9 = base64DecOut[1];
+              volatile byte c10 = base64DecOut[2];
+              volatile byte c11 = base64DecOut[3];
+              volatile byte c12 = base64DecOut[0];
+              volatile byte c13 = base64DecOut[1];
+              volatile byte c14 = base64DecOut[2];
+              volatile byte c15 = base64DecOut[3];
+              volatile byte c16 = base64DecOut[0];
+              volatile byte c17 = base64DecOut[1];
+              volatile byte c18 = base64DecOut[2];
+              volatile byte c19 = base64DecOut[3];
+              volatile byte c20 = base64DecOut[0];
+              volatile byte c21 = base64DecOut[1];
+              volatile byte c22 = base64DecOut[2];
+              volatile byte c23 = base64DecOut[3];
+              volatile byte c24 = base64DecOut[0];
+              volatile byte c54 = base64DecOut[54];
+              volatile byte c55 = base64DecOut[55];
+              volatile byte c56 = base64DecOut[56];
+              volatile byte c57 = base64DecOut[57];
+              volatile byte c58 = base64DecOut[58];
+              volatile byte c59 = base64DecOut[59];
+              volatile byte c60 = base64DecOut[60];
+              volatile byte c61 = base64DecOut[61];
+              volatile byte c62 = base64DecOut[62];
+              volatile byte c63 = base64DecOut[63];
+              volatile byte c64 = base64DecOut[64];
+*/
+             
+            // 2) SHA-256 encode the canonical resource (Here string of: Accountname and 'Tables')
+            //    with base-64 deoded Azure Storage Account Key
+            // HMAC SHA-256 encoding
+            // https://techtutorialsx.com/2018/01/25/esp32-arduino-applying-the-hmac-sha-256-mechanism/
+            
+            
+            //char *key = base64DecOut;
+            //char *key = "Monikaka";
+            //char *payload = (char *)toSign.c_str();
+            char *payload = buf;
+            //char *payload = "Roland";
+            byte hmacResult[sizeSHA256];
+            mbedtls_md_context_t ctxSHA256;
+            //mbedtls_md_type_t md_type = MBEDTLS_MD_SHA256;
+            mbedtls_md_type_t md_type = MBEDTLS_MD_SHA256;
+            const size_t payloadLength = strlen(payload);
+            //const size_t keyLength = strlen(key);
+            mbedtls_md_init(&ctxSHA256);
+            volatile int setUpResult = mbedtls_md_setup(&ctxSHA256, mbedtls_md_info_from_type(md_type), 1); 
+            volatile int startResult = mbedtls_md_hmac_starts( &ctxSHA256, (const unsigned char *) base64DecOut, decodedKeyLen);
+            //volatile int startResult = mbedtls_md_hmac_starts( &ctxSHA256, (const unsigned char *) _accountPtr->AccountKey.c_str(), 88);
+            volatile int updateResult = mbedtls_md_hmac_update(&ctxSHA256, (const unsigned char *) payload, payloadLength);
+            volatile int finishResult = mbedtls_md_hmac_finish(&ctxSHA256, hmacResult);
+            mbedtls_md_free(&ctxSHA256); 
+
+            volatile byte b0 = hmacResult[0];
+            volatile byte b1 = hmacResult[1];
+            volatile byte b2 = hmacResult[2];
+
+               
+            // Just for fun: convert to hex string (not needed here)
+
+           char SHA256HashStr[33] {0};
+                char * ptr = &SHA256HashStr[0];
+                for (int i = 0; i < 32; i++) {
+                    ptr[i] = hmacResult[i];
+                }
+            char SHA256HashHexStr[65];
+            stringToHexString(SHA256HashHexStr, SHA256HashStr, (const char *)"");
+            
+
+            // 3) Base-64 encode the SHA-265 encoded canonical resorce
+            
+            char hmacResultHex[100] {0};
+            base64_encode(SHA256HashStr, hmacResultHex);
+
+            size_t outPutBufferLength = 100;
+            char base64EncOut[outPutBufferLength];
+            
+            size_t outPutWritten = 0;
+            
+            int Base64EncodeResult = mbedtls_base64_encode((unsigned char *)base64EncOut, outPutBufferLength, &outPutWritten,
+                   (const unsigned char *)hmacResult, sizeSHA256);
+            
+            //mbedtls_md_free(&ctxSHA256); 
+            
+
+            /*
+            var hmac = new PervasiveDigital.Security.ManagedProviders.HMACSHA256(Convert.FromBase64String(_account.AccountKey));
+            var hmacBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(toSign));
+            signature = Convert.ToBase64String(hmacBytes).Replace("!", "+").Replace("*", "/");
+            */
+
+            // long endTime = DateTime.Now.Ticks;
+            // Debug.WriteLine("Needed for MD5SHA256-hash: " + ((endTime - startTime) / TimeSpan.TicksPerMillisecond).ToString());  // about 160 ms
+
+
+            char retBuf[_accountPtr->AccountName.length() + strlen(base64EncOut) +20] {0};
+            String authorizationHeader;
+            if (useSharedKeyLite)
+            {
+                //return "SharedKeyLite " + _account.AccountName + ":" + signature;
+
+                sprintf(retBuf, "%s %s:%s", (char *)"SharedKeyLite", (char *)_accountPtr->AccountName.c_str(), base64EncOut); 
+                //return "SharedKeyLite " + _accountPtr->AccountName + ":" + base64EncOut;
+                authorizationHeader = retBuf;
+                return authorizationHeader;
+            }
+            else
+            {
+                sprintf(retBuf, "%s %s:%s", (char *)"SharedKey", (char *)_accountPtr->AccountName.c_str(), base64EncOut); 
+                //return "SharedKey " + _account.AccountName + ":" + signature;
+                //return "SharedKey " + _accountPtr->AccountName + ":" + base64EncOut;
+                authorizationHeader = retBuf;
+                return authorizationHeader;
+            }
+            
+            
+
+            //return "Hallo";
+        }
 
 
 
+        
+
+// Constructor
 TableClient::TableClient(CloudStorageAccount *account, const char * caCert, HTTPClient *httpClient)
+//TableClient::TableClient(CloudStorageAccount &account, const char * caCert, HTTPClient *httpClient)
 {
     _accountPtr = account;
+    //_accountPtr->AccountKey = account->AccountKey;
+    //_accountPtr->AccountName = account->AccountName;
+    //_accountPtr->UriEndPointTable = account->UriEndPointTable;
     _caCert = caCert;
     _httpPtr = httpClient;
 }
@@ -73,18 +300,42 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
             //OperationResultsClear();
             
             String timestamp = GetDateHeader();
+            String timestampUTC = timestamp + ".0000000Z";
+                
+           
+            String contentType = getContentTypeString(pContentType);
+            String acceptType = getAcceptTypeString(pAcceptType);
 
-            return AZ_HTTP_STATUS_CODE_CREATED;
+            const char * li1 = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>";
+            const char * li2 = "<entry xmlns:d=\"http://schemas.microsoft.com/ado/2007/08/dataservices\"  ";
+            const char * li3 = "xmlns:m=\"http://schemas.microsoft.com/ado/2007/08/dataservices/metadata\" ";
+            const char * li4 = "xmlns=\"http://www.w3.org/2005/Atom\"> <id>http://";          
+                  char * li5 = (char *)_accountPtr->AccountName.c_str();
+            const char * li6 = ".table.core.windows.net/Tables('";
+                  char * li7 = (char *)tableName;
+            const char * li8 = "')</id><title /><updated>";
+                  char * li9 = (char *)timestampUTC.c_str();
+            const char * li10 = "</updated><author><name/></author> ";
+            const char * li11 = "<content type=\"application/xml\"><m:properties><d:TableName>";
+                  char * li12 = (char *)tableName;
+            const char * li13 = "</d:TableName></m:properties></content></entry>";
+
+            
+            char addBuffer[1000];
+            sprintf(addBuffer, "%s%s%s%s%s%s%s%s%s%s%s%s%s", li1, li2, li3, li4,li5, li6, li7, li8, li9, li10,li11, li12, li13);
+            volatile size_t theLength = strlen(addBuffer);
+            String content = addBuffer;
+            //String content2 = content.substring(120, 240);
+            //String content3 = content.substring(230, 350);
+            //String content4 = content.substring(340, 460);
+            //String content5 = content.substring(450, 570);
+            //delete[] addBuffer;
+            volatile int dummy2 = 1;
+            
 
             /*
-            string content = string.Empty;
-
-            string contentType = getContentTypeString(pContentType);
-            string acceptType = getAcceptTypeString(pAcceptType);
-
-            //long totalMemory = GC.GetTotalMemory(true);
-        
-            content = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>" +
+            char buf[300];
+            sprintf(buf,"<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>" +
            "<entry xmlns:d=\"http://schemas.microsoft.com/ado/2007/08/dataservices\"  " +
            "xmlns:m=\"http://schemas.microsoft.com/ado/2007/08/dataservices/metadata\" " +
            "xmlns=\"http://www.w3.org/2005/Atom\"> " +
@@ -94,19 +345,58 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
            "<title />" +
            "<updated>" + DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.0000000Z") + "</updated>" +
            "<author><name/></author> " +
+           "<content type=\"application/xml\"><m:properties><d:TableName>" + tableName + "</d:TableName></m:properties></content></entry>" )
+            */
+            /*
+            content = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>" +
+           "<entry xmlns:d=\"http://schemas.microsoft.com/ado/2007/08/dataservices\"  " +
+           "xmlns:m=\"http://schemas.microsoft.com/ado/2007/08/dataservices/metadata\" " +
+           "xmlns=\"http://www.w3.org/2005/Atom\"> " +
+           "<id>http://" + _accountPtr->AccountName + ".table.core.windows.net/Tables('"
+               + tableName +
+           "')</id>" +
+           "<title />" +
+           "<updated>" + timestamp + "</updated>" +
+           "<author><name/></author> " +
            "<content type=\"application/xml\"><m:properties><d:TableName>" + tableName + "</d:TableName></m:properties></content></entry>";
+           */
+            
+            //DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.0000000Z")
+            
+            
 
 
-            string HttpVerb = "POST";
-            string ContentMD5 = string.Empty;
-            byte[] hashContentMD5 = null;
-            int contentLength = 0;
-            byte[] payload = GetBodyBytesAndLength(content, out contentLength);
 
-            content = null; // free memory
+            String HttpVerb = "POST";
+            String ContentMD5 = "";
+            //byte hashContentMD5[] = null;
+            //int contentLength = 0;
+            int contentLength = strlen(addBuffer);
+            
+            // byte[] payload = GetBodyBytesAndLength(content, out contentLength);
+            
+            
+            
            
-            string authorizationHeader = CreateTableAuthorizationHeader(payload, String.Format("/{0}/{1}", _account.AccountName, "Tables()"), timestamp, HttpVerb, pContentType, out ContentMD5, out hashContentMD5, useSharedKeyLite = false);
+            //String authorizationHeader = CreateTableAuthorizationHeader(payload, String.Format("/{0}/{1}", _account.AccountName, "Tables()"), timestamp, HttpVerb, pContentType, out ContentMD5, out hashContentMD5, useSharedKeyLite = false);
          
+            char Account_Tables[100];
+            sprintf(Account_Tables, "/%s/%s", (char *)_accountPtr->AccountName.c_str(), (char *)"Tables()");
+            
+            //char hushBuffer[1000];
+            //int hashBufferLength = 1000;
+
+            char hushBuffer[500];
+            int hashBufferLength = 500;
+
+            char md5Buffer[32 +1];
+
+            //EncryptResults encryptResults = CreateTableAuthorizationHeader((char *)addBuffer, (char *)Account_Tables, timestamp, HttpVerb, pContentType, hushBuffer, hashBufferLength, useSharedKeyLite = false);
+
+
+            String encryptResults = CreateTableAuthorizationHeader((char *)addBuffer, Account_Tables, timestamp, HttpVerb, pContentType, md5Buffer, hushBuffer, hashBufferLength, useSharedKeyLite = false);
+            return AZ_HTTP_STATUS_CODE_CREATED;
+            /*
             string urlPath = String.Format("{0}", tableName);
            
             string canonicalizedResource = String.Format("/{0}/{1}", _account.AccountName, urlPath);
@@ -148,6 +438,9 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
             */
         }
         
+        
+
+
 
        void OperationResultsClear()
         {
@@ -161,15 +454,49 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
         
         String GetDateHeader()
         {
+            //char daysOfTheWeek[7][12] = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
+ 
+            char daysOfTheWeek[7][4] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+
+            
 
           DateTime now = sysTime.getTime();
+
+          String dayOfWeek = daysOfTheWeek[now.dayOfTheWeek()];
           
-          //char buf[42];
-          //sprintf(buf,"%i:%i:%i-%i:%i:%i", now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second());
-           String returnValue =  now.timestamp();           
+          char buf[42];
+          
+          sprintf(buf,"%04i-%02i-%02iT%02i:%02i:%02i%s", now.year() - 30, now.month(), now.day(), now.hour(), now.minute(), now.second(), ".0000000Z");
+          
+          //String returnValue = buf;
+          String returnValue = "2020-09-30T23:31:04";
+
+          //String returnValue =  now.timestamp(DateTime::TIMESTAMP_FULL);           
           
           return returnValue;
             //return DateTime.UtcNow.ToString("R");
         }
-        
-        
+
+        String getContentTypeString(ContType pContentType)
+        {
+            if (pContentType == contApplicationIatomIxml)
+            { return "application/atom+xml"; }
+            else
+            { return "application/json"; }
+        }
+
+        String getAcceptTypeString(AcceptType pAcceptType)
+        {
+            if (pAcceptType == acceptApplicationIatomIxml)
+            { return "application/atom+xml"; }
+            else
+            { return "application/json"; }
+        }
+        /*
+        byte[] GetBodyBytesAndLength(string body, out int contentLength)
+        {
+            var content = Encoding.UTF8.GetBytes(body);
+            contentLength = content.Length;
+            return content;
+        }
+        */

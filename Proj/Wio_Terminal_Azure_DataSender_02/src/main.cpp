@@ -14,10 +14,7 @@
 //#include "RTC_SAMD51.h"
 #include "DateTime.h"
 
-
-#include <AzureStorage/SysTime.h>
-
-
+#include <Time/SysTime.h>
 
 #include <AzureStorage/TableClient.h>
 
@@ -101,13 +98,8 @@ NTP ntp(wifiUdp);
 HTTPClient http;
 HTTPClient * httpPtr = &http;
 
-
+// must be static !!
 static SysTime sysTime;
-
-//MySysTime->
-
-//MySysTime.
-//RTC_SAMD51 rtc;
 
 typedef const char* X509Certificate;
 
@@ -175,8 +167,6 @@ void setup() {
 
     wifi_client.setCACert(baltimore_root_ca);
 
-    
-    
     ntp.begin();
     ntp.update();
     ntp.timeZone(0,0);
@@ -184,9 +174,6 @@ void setup() {
     lcd_log_line((char *)ntp.formattedTime("%d. %B %Y"));    // dd. Mmm yyyy
     lcd_log_line((char *)ntp.formattedTime("%A %T"));        // Www hh:mm:ss
 
-
-  
-    
     //rtc.begin();
 
     //DateTime now = DateTime(F(__DATE__), F(__TIME__));
@@ -195,11 +182,9 @@ void setup() {
                 (uint8_t)ntp.hours(), (uint8_t)ntp.minutes(), (uint8_t)ntp.seconds());
 
     sysTime.begin(now);
-
-
-    //rtc.adjust(now);
     now = sysTime.getTime();
-    //now = rtc.now();
+    
+    /*
     while (true)
     {
       uint32_t startTime = millis();
@@ -209,10 +194,11 @@ void setup() {
       }
       now = sysTime.getTime();
       int theSecond = now.second();
-      sprintf(buf, "Hour is: %i", theSecond);
+      sprintf(buf, "Second is: %i", theSecond);
       lcd_log_line(buf);
     }
-
+    */
+   
     CloudStorageAccount myCloudStorageAccount(AZURE_CONFIG_ACCOUNT_NAME, AZURE_CONFIG_ACCOUNT_KEY, true);
     
     CloudStorageAccount * myCloudStorageAccountPtr = &myCloudStorageAccount;
@@ -265,12 +251,13 @@ delay(100);
 X509Certificate myX509Certificate = baltimore_root_ca;
 
 TableClient table(myCloudStorageAccountPtr, myX509Certificate, httpPtr);
+//TableClient table(myCloudStorageAccount, myX509Certificate, httpPtr);
 
 table.send();
 
 //String tableName = "newtable";
 
-const char * tableName = "newtable";
+const char * tableName = "AnalogTestValues2020";
 
 az_http_status_code theResult = createTable(myCloudStorageAccountPtr, myX509Certificate, tableName);
 

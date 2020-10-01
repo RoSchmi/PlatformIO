@@ -5,8 +5,6 @@
 #ifndef _SYSTIME_H_
 #define _SYSTIME_H_
 
-
-
 class SysTime
 {
 public:
@@ -17,6 +15,4 @@ public:
     void setTime(DateTime);
     void begin(DateTime);
 };
-//extern SysTime  MySysTime;
-
 #endif 

@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include <AzureStorage/SysTime.h>
+#include <Time/SysTime.h>
 
 static bool rtcIsStarted = false;
 
@@ -7,8 +7,11 @@ static RTC_SAMD51 rtc;
 
 SysTime::SysTime()
 { 
-    rtcIsStarted = true;
-    rtc.begin();
+    if (!rtcIsStarted)
+    {
+        rtcIsStarted = true;
+        rtc.begin();
+    }
 }
 
 SysTime::~SysTime(){};
@@ -17,6 +20,7 @@ void SysTime::begin(DateTime dateTime)
 {   
     if (!rtcIsStarted)
     {
+        rtcIsStarted = true;
         rtc.begin();
     }
     rtc.adjust(dateTime);   
@@ -25,6 +29,7 @@ DateTime SysTime::getTime()
 {    
     if (!rtcIsStarted)
     {
+        rtcIsStarted = true;
         rtc.begin();
     }
     return rtc.now();

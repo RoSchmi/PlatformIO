@@ -6,6 +6,7 @@
 ## Only include these folders
 !FreeFonts.h
 !config.h
+!az_iot_helpers.h
 !README
 
 
