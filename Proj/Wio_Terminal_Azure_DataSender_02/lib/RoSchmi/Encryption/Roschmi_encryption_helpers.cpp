@@ -8,11 +8,39 @@
 //#include "NTP.h"
 //#include <time.h>
 
-
-
 #include "mbedtls/md.h"
 #include "mbedtls/base64.h"
 #include "mbedtls/sha256.h"
+
+int createSHA256Hash(char * output32Bytes, size_t outputLength, const char * input, const size_t inputLength, const char * key, const size_t keyLength)
+{
+    if (outputLength >= 33)
+    {
+        uint8_t hmacResult[32];
+        mbedtls_md_context_t ctxSHA256;          
+        mbedtls_md_type_t md_type = MBEDTLS_MD_SHA256;
+        //const size_t payloadLength = strlen(payload);        
+        mbedtls_md_init(&ctxSHA256);
+        volatile int setUpResult = mbedtls_md_setup(&ctxSHA256, mbedtls_md_info_from_type(md_type), 1); 
+        volatile int startResult = mbedtls_md_hmac_starts( &ctxSHA256, (const unsigned char *) key, keyLength);
+        volatile int updateResult = mbedtls_md_hmac_update(&ctxSHA256, (const unsigned char *) input, inputLength);
+        volatile int finishResult = mbedtls_md_hmac_finish(&ctxSHA256, hmacResult);
+        mbedtls_md_free(&ctxSHA256);
+
+        char * ptr = &output32Bytes[0];
+        for (int i = 0; i < 32; i++) {
+            ptr[i] = hmacResult[i];
+        }
+        ptr[32] = '\0';      
+        return 0;
+    }
+    else
+    {
+         return 1;
+    }
+    
+
+}
 
 
 int createMd5Hash(char * output17Bytes, size_t outputLength, const char * input)
@@ -107,19 +135,24 @@ int base64_decode(const char * input, char * output)
             }
 }
 
-int base64_encode(const char * input, char * output)
+int base64_encode(const char * input, const size_t inputLength, char * output, const size_t outputLength)
 {
-
-    size_t outPutBufferLength = strlen(input) * 3;  // size of the destination buffer
-    char base64EncOut[outPutBufferLength];     // destination buffer (can be NULL for checking size)
+    if (outputLength > inputLength * 1.5 )
+    {
+        //size_t outPutBufferLength = inputLength * 3;  // size of the destination buffer
+        unsigned char base64EncOut[outputLength];     // destination buffer (can be NULL for checking size)
             
             size_t outPutWritten = 0;         // number of bytes written 
 
 
            // mbedtls_base64_decode((unsigned char *)base64DecOut, destLen, &olen, (unsigned char *)input, strlen(input));
             
-            int Base64EncodeResult = mbedtls_base64_encode((unsigned char *)base64EncOut, outPutBufferLength, &outPutWritten,
-                   (const unsigned char *)input, strlen(input));
+            //int Base64EncodeResult = mbedtls_base64_encode((unsigned char *)base64EncOut, outPutBufferLength, &outPutWritten,
+            //      (const unsigned char *)input, strlen(input));
+
+            int Base64EncodeResult = mbedtls_base64_encode((unsigned char *)base64EncOut, outputLength, &outPutWritten,
+                   (const unsigned char *)input, inputLength);
+
 
             if (outPutWritten == 0)
             {
@@ -132,8 +165,15 @@ int base64_encode(const char * input, char * output)
                 size_t ctr = outPutWritten;
                 output[ctr] = '\0';
                 for (int i = 0; i < ctr; i++) {
+                    //output[i] = base64EncOut[i];
                     output[i] = base64EncOut[i];
                 }                
                 return 0;
             }
+    }
+    else
+    {
+        return 1;
+    }
+    
 }

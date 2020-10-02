@@ -12,13 +12,16 @@ extern "C"
 {
 #endif // __cplusplus
 
+int createSHA256Hash(char * output32Bytes, size_t outputLength, const char * input, size_t inputLength, const char * key, const size_t keyLength);
+
 int createMd5Hash(char * output16Bytes, size_t md5HashStrLenght, const char * input);
 
 void stringToHexString(char * output, const char * input, const char * delimiter); 
 
 int base64_decode(const char * input, char * output);
 
-int base64_encode(const char * input, char * output);
+//int base64_encode(const char * input, char * output);
+int base64_encode(const char * input, const size_t inputLength, char * output, const size_t outputLength);
 
 
 #ifdef __cplusplus

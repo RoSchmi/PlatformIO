@@ -83,22 +83,18 @@ int base64_decode(const char * input, char * output);
                 // Convert to hex-string
                 stringToHexString(pMD5HashHex, md5HashStr, (const char *)"");
                 String theString = pMD5HashHex;
-                volatile int dummy345 = 1;     
+                  
             }
                         
-            //String toSign;
-            char buf[(strlen(canonicalResource) + 100)];
+            
+            char toSign[(strlen(canonicalResource) + 100)];
             if (useSharedKeyLite)
             {
-                
-                //sprintf(buf, "%s\%s", ptimeStamp, &canonicalResource);
-                sprintf(buf, "%s\%s", (char *)ptimeStamp.c_str(), canonicalResource);
-                //toSign = buf;              
+                sprintf(toSign, "%s\%s", (char *)ptimeStamp.c_str(), canonicalResource);                        
             }
             else
             {
-                sprintf(buf, "%s\n%s\n%s\n%s\n%s", (char *)pHttpVerb.c_str(), pMD5HashHex , (char *)contentType.c_str(), (char *)ptimeStamp.c_str(), canonicalResource);          
-                //toSign = buf;
+                sprintf(toSign, "%s\n%s\n%s\n%s\n%s", (char *)pHttpVerb.c_str(), pMD5HashHex , (char *)contentType.c_str(), (char *)ptimeStamp.c_str(), canonicalResource);                        
             }
             
             // Produce Authentication Header
@@ -114,7 +110,7 @@ int base64_decode(const char * input, char * output);
                 
                 size_t decodedKeyLen = (decodeResult != -1) ? decodeResult : 0; 
                
-
+              
 /*
               volatile byte c0 = base64DecOut[0];
               volatile byte c1 = base64DecOut[1];
@@ -159,11 +155,16 @@ int base64_decode(const char * input, char * output);
             // HMAC SHA-256 encoding
             // https://techtutorialsx.com/2018/01/25/esp32-arduino-applying-the-hmac-sha-256-mechanism/
             
-            
+             // create SHA256Hash           
+            size_t sha256HashBufferLength = 32 + 1;
+            char sha256HashStr[sha256HashBufferLength] {0};
+            int create_SHA256_result = createSHA256Hash(sha256HashStr, sha256HashBufferLength, toSign, strlen(toSign), base64DecOut, decodedKeyLen); 
+
+            /*
             //char *key = base64DecOut;
             //char *key = "Monikaka";
             //char *payload = (char *)toSign.c_str();
-            char *payload = buf;
+            char *payload = toSign;
             //char *payload = "Roland";
             byte hmacResult[sizeSHA256];
             mbedtls_md_context_t ctxSHA256;
@@ -179,13 +180,14 @@ int base64_decode(const char * input, char * output);
             volatile int finishResult = mbedtls_md_hmac_finish(&ctxSHA256, hmacResult);
             mbedtls_md_free(&ctxSHA256); 
 
+
             volatile byte b0 = hmacResult[0];
             volatile byte b1 = hmacResult[1];
             volatile byte b2 = hmacResult[2];
-
+            */
                
             // Just for fun: convert to hex string (not needed here)
-
+            /*
            char SHA256HashStr[33] {0};
                 char * ptr = &SHA256HashStr[0];
                 for (int i = 0; i < 32; i++) {
@@ -193,13 +195,16 @@ int base64_decode(const char * input, char * output);
                 }
             char SHA256HashHexStr[65];
             stringToHexString(SHA256HashHexStr, SHA256HashStr, (const char *)"");
-            
+            */
 
             // 3) Base-64 encode the SHA-265 encoded canonical resorce
             
-            char hmacResultHex[100] {0};
-            base64_encode(SHA256HashStr, hmacResultHex);
-
+            size_t resultBase64Size = 32 + 20;
+            char hmacResultBase64[resultBase64Size] {0};
+            //base64_encode(SHA256HashStr, hmacResultHex);
+            base64_encode(sha256HashStr, 32, hmacResultBase64, resultBase64Size);
+            
+            /*
             size_t outPutBufferLength = 100;
             char base64EncOut[outPutBufferLength];
             
@@ -207,6 +212,7 @@ int base64_decode(const char * input, char * output);
             
             int Base64EncodeResult = mbedtls_base64_encode((unsigned char *)base64EncOut, outPutBufferLength, &outPutWritten,
                    (const unsigned char *)hmacResult, sizeSHA256);
+            */
             
             //mbedtls_md_free(&ctxSHA256); 
             
@@ -221,20 +227,22 @@ int base64_decode(const char * input, char * output);
             // Debug.WriteLine("Needed for MD5SHA256-hash: " + ((endTime - startTime) / TimeSpan.TicksPerMillisecond).ToString());  // about 160 ms
 
 
-            char retBuf[_accountPtr->AccountName.length() + strlen(base64EncOut) +20] {0};
+            char retBuf[_accountPtr->AccountName.length() + strlen(hmacResultBase64) + 20] {0};
             String authorizationHeader;
             if (useSharedKeyLite)
             {
                 //return "SharedKeyLite " + _account.AccountName + ":" + signature;
 
-                sprintf(retBuf, "%s %s:%s", (char *)"SharedKeyLite", (char *)_accountPtr->AccountName.c_str(), base64EncOut); 
+                //sprintf(retBuf, "%s %s:%s", (char *)"SharedKeyLite", (char *)_accountPtr->AccountName.c_str(), base64EncOut);
+                sprintf(retBuf, "%s %s:%s", (char *)"SharedKeyLite", (char *)_accountPtr->AccountName.c_str(), hmacResultBase64);
                 //return "SharedKeyLite " + _accountPtr->AccountName + ":" + base64EncOut;
                 authorizationHeader = retBuf;
                 return authorizationHeader;
             }
             else
             {
-                sprintf(retBuf, "%s %s:%s", (char *)"SharedKey", (char *)_accountPtr->AccountName.c_str(), base64EncOut); 
+                //sprintf(retBuf, "%s %s:%s", (char *)"SharedKey", (char *)_accountPtr->AccountName.c_str(), base64EncOut);
+                sprintf(retBuf, "%s %s:%s", (char *)"SharedKey", (char *)_accountPtr->AccountName.c_str(), hmacResultBase64);
                 //return "SharedKey " + _account.AccountName + ":" + signature;
                 //return "SharedKey " + _accountPtr->AccountName + ":" + base64EncOut;
                 authorizationHeader = retBuf;
