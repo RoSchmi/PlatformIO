@@ -32,86 +32,49 @@ String getContentTypeString(ContType pContentType);
 String getAcceptTypeString(AcceptType pAcceptType);
 int base64_decode(const char * input, char * output);
 
-//EncryptResults CreateTableAuthorizationHeader(char * content, char * canonicalResource, String ptimeStamp, String pHttpVerb, ContType pContentType, bool useSharedKeyLite);
-        
-        /*
-        String stringToHexString(const char * input, const char * delimiter = "")
-        {
-            const char _hexCharacterTable[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };  
-    
-            char chars[(strlen(input) * 2) + 1 + strlen(input - 1) * strlen(delimiter)];
-            int j = 0;
-                for (size_t i = 0; i < strlen(input); i++)
-                {
-                    chars[j++] = (char)_hexCharacterTable[(input[i] & 0xF0) >> 4];
-                    chars[j++] = (char)_hexCharacterTable[input[i] & 0x0F];
-                    
-                    if (i != (strlen(input) - 1))
-                    {                       
-                            for (size_t i = 0; i < strlen(delimiter); i++)
-                           {                            
-                            chars[j++] = delimiter[i];                            
-                           }                     
-                    }
-                    
-                }
-                chars[j] = '\0';
-                String returnValue = (char *)chars;
-                return returnValue;           
-        }
-        */
+String TableClient::CreateTableAuthorizationHeader(char * content, char * canonicalResource, String ptimeStamp, String pHttpVerb, ContType pContentType, char * pMD5HashHex, char * pHash, int pHashLen, bool useSharedKeyLite)
+{
+    String contentType = getContentTypeString(pContentType);
+                                                                                  
+    if (!useSharedKeyLite)
+    {               
+        // How to produce Md5 hash:
+        //https://community.mongoose-os.com/t/md5-library-setup-and-config-examples/856
 
-        String TableClient::CreateTableAuthorizationHeader(char * content, char * canonicalResource, String ptimeStamp, String pHttpVerb, ContType pContentType, char * pMD5HashHex, char * pHash, int pHashLen, bool useSharedKeyLite)
-        {
-            String contentType = getContentTypeString(pContentType);
-                                                            
-            uint8_t sizeSHA256 = 32;
-                                  
-            if (!useSharedKeyLite)
-            {               
-                // How to produce Md5 hash:
-                //https://community.mongoose-os.com/t/md5-library-setup-and-config-examples/856
-
-                // To test the function, set content to "zestyr"
-                //content = (char *)"zestyr";    //hash is 'dd62788115086eac57fd27e9f6f0fa35'
-
-                // create Md5Hash           
-                size_t Md5HashStrLenght = 16 + 1;
-                char md5HashStr[Md5HashStrLenght] {0};
-                int create_Md5_result = createMd5Hash(md5HashStr, Md5HashStrLenght, content);
+        // create Md5Hash           
+        size_t Md5HashStrLenght = 16 + 1;
+        char md5HashStr[Md5HashStrLenght] {0};
+        int create_Md5_result = createMd5Hash(md5HashStr, Md5HashStrLenght, content);
                 
-                // Convert to hex-string
-                stringToHexString(pMD5HashHex, md5HashStr, (const char *)"");
-                String theString = pMD5HashHex;
-                  
-            }
+        // Convert to hex-string
+        stringToHexString(pMD5HashHex, md5HashStr, (const char *)"");
+        String theString = pMD5HashHex;   
+    }
                         
+    char toSign[(strlen(canonicalResource) + 100)];
+    if (useSharedKeyLite)
+    {
+        sprintf(toSign, "%s\%s", (char *)ptimeStamp.c_str(), canonicalResource);                        
+    }
+    else
+    {
+        sprintf(toSign, "%s\n%s\n%s\n%s\n%s", (char *)pHttpVerb.c_str(), pMD5HashHex , (char *)contentType.c_str(), (char *)ptimeStamp.c_str(), canonicalResource);                        
+    }
             
-            char toSign[(strlen(canonicalResource) + 100)];
-            if (useSharedKeyLite)
-            {
-                sprintf(toSign, "%s\%s", (char *)ptimeStamp.c_str(), canonicalResource);                        
-            }
-            else
-            {
-                sprintf(toSign, "%s\n%s\n%s\n%s\n%s", (char *)pHttpVerb.c_str(), pMD5HashHex , (char *)contentType.c_str(), (char *)ptimeStamp.c_str(), canonicalResource);                        
-            }
-            
-            // Produce Authentication Header
-            // 1) Base64 decode the Azure Storage Key
+    // Produce Authentication Header
+    // 1) Base64 decode the Azure Storage Key
            
-            // Hoe to decode Base 64 String
-            //https://www.ncbi.nlm.nih.gov/IEB/ToolBox/CPP_DOC/lxr/source/src/connect/mbedtls/
+    // Hoe to decode Base 64 String
+    //https://www.ncbi.nlm.nih.gov/IEB/ToolBox/CPP_DOC/lxr/source/src/connect/mbedtls/
             
-            // Base64-decode (Azure Storage Key)
+    // Base64-decode (Azure Storage Key)
                 
-                char base64DecOut[80] {0};
-                int decodeResult = base64_decode(_accountPtr->AccountKey.c_str(), base64DecOut);
+    char base64DecOut[80] {0};
+    int decodeResult = base64_decode(_accountPtr->AccountKey.c_str(), base64DecOut);
                 
-                size_t decodedKeyLen = (decodeResult != -1) ? decodeResult : 0; 
-               
-              
-/*
+    size_t decodedKeyLen = (decodeResult != -1) ? decodeResult : 0; 
+                           
+            /*
               volatile byte c0 = base64DecOut[0];
               volatile byte c1 = base64DecOut[1];
               volatile byte c2 = base64DecOut[2];
@@ -148,111 +111,45 @@ int base64_decode(const char * input, char * output);
               volatile byte c62 = base64DecOut[62];
               volatile byte c63 = base64DecOut[63];
               volatile byte c64 = base64DecOut[64];
-*/
+            */
              
-            // 2) SHA-256 encode the canonical resource (Here string of: Accountname and 'Tables')
-            //    with base-64 deoded Azure Storage Account Key
-            // HMAC SHA-256 encoding
-            // https://techtutorialsx.com/2018/01/25/esp32-arduino-applying-the-hmac-sha-256-mechanism/
+    // 2) SHA-256 encode the canonical resource (Here string of: Accountname and 'Tables')
+    //    with base-64 deoded Azure Storage Account Key
+    // HMAC SHA-256 encoding
+    // https://techtutorialsx.com/2018/01/25/esp32-arduino-applying-the-hmac-sha-256-mechanism/
             
-             // create SHA256Hash           
-            size_t sha256HashBufferLength = 32 + 1;
-            char sha256HashStr[sha256HashBufferLength] {0};
-            int create_SHA256_result = createSHA256Hash(sha256HashStr, sha256HashBufferLength, toSign, strlen(toSign), base64DecOut, decodedKeyLen); 
+    // create SHA256Hash           
+    size_t sha256HashBufferLength = 32 + 1;
+    char sha256HashStr[sha256HashBufferLength] {0};
+    int create_SHA256_result = createSHA256Hash(sha256HashStr, sha256HashBufferLength, toSign, strlen(toSign), base64DecOut, decodedKeyLen); 
 
-            /*
-            //char *key = base64DecOut;
-            //char *key = "Monikaka";
-            //char *payload = (char *)toSign.c_str();
-            char *payload = toSign;
-            //char *payload = "Roland";
-            byte hmacResult[sizeSHA256];
-            mbedtls_md_context_t ctxSHA256;
-            //mbedtls_md_type_t md_type = MBEDTLS_MD_SHA256;
-            mbedtls_md_type_t md_type = MBEDTLS_MD_SHA256;
-            const size_t payloadLength = strlen(payload);
-            //const size_t keyLength = strlen(key);
-            mbedtls_md_init(&ctxSHA256);
-            volatile int setUpResult = mbedtls_md_setup(&ctxSHA256, mbedtls_md_info_from_type(md_type), 1); 
-            volatile int startResult = mbedtls_md_hmac_starts( &ctxSHA256, (const unsigned char *) base64DecOut, decodedKeyLen);
-            //volatile int startResult = mbedtls_md_hmac_starts( &ctxSHA256, (const unsigned char *) _accountPtr->AccountKey.c_str(), 88);
-            volatile int updateResult = mbedtls_md_hmac_update(&ctxSHA256, (const unsigned char *) payload, payloadLength);
-            volatile int finishResult = mbedtls_md_hmac_finish(&ctxSHA256, hmacResult);
-            mbedtls_md_free(&ctxSHA256); 
+        /*
+        volatile byte b0 = sha256HashStr[0];
+        volatile byte b1 = sha256HashStr[1];
+        volatile byte b2 = sha256HashStr[2];
+        */
+             
+    // 3) Base-64 encode the SHA-265 encoded canonical resorce
 
-
-            volatile byte b0 = hmacResult[0];
-            volatile byte b1 = hmacResult[1];
-            volatile byte b2 = hmacResult[2];
-            */
-               
-            // Just for fun: convert to hex string (not needed here)
-            /*
-           char SHA256HashStr[33] {0};
-                char * ptr = &SHA256HashStr[0];
-                for (int i = 0; i < 32; i++) {
-                    ptr[i] = hmacResult[i];
-                }
-            char SHA256HashHexStr[65];
-            stringToHexString(SHA256HashHexStr, SHA256HashStr, (const char *)"");
-            */
-
-            // 3) Base-64 encode the SHA-265 encoded canonical resorce
+    size_t resultBase64Size = 32 + 20;
+    char hmacResultBase64[resultBase64Size] {0};
+    base64_encode(sha256HashStr, 32, hmacResultBase64, resultBase64Size);
             
-            size_t resultBase64Size = 32 + 20;
-            char hmacResultBase64[resultBase64Size] {0};
-            //base64_encode(SHA256HashStr, hmacResultHex);
-            base64_encode(sha256HashStr, 32, hmacResultBase64, resultBase64Size);
-            
-            /*
-            size_t outPutBufferLength = 100;
-            char base64EncOut[outPutBufferLength];
-            
-            size_t outPutWritten = 0;
-            
-            int Base64EncodeResult = mbedtls_base64_encode((unsigned char *)base64EncOut, outPutBufferLength, &outPutWritten,
-                   (const unsigned char *)hmacResult, sizeSHA256);
-            */
-            
-            //mbedtls_md_free(&ctxSHA256); 
-            
-
-            /*
-            var hmac = new PervasiveDigital.Security.ManagedProviders.HMACSHA256(Convert.FromBase64String(_account.AccountKey));
-            var hmacBytes = hmac.ComputeHash(Encoding.UTF8.GetBytes(toSign));
-            signature = Convert.ToBase64String(hmacBytes).Replace("!", "+").Replace("*", "/");
-            */
-
-            // long endTime = DateTime.Now.Ticks;
-            // Debug.WriteLine("Needed for MD5SHA256-hash: " + ((endTime - startTime) / TimeSpan.TicksPerMillisecond).ToString());  // about 160 ms
-
-
-            char retBuf[_accountPtr->AccountName.length() + strlen(hmacResultBase64) + 20] {0};
-            String authorizationHeader;
-            if (useSharedKeyLite)
-            {
-                //return "SharedKeyLite " + _account.AccountName + ":" + signature;
-
-                //sprintf(retBuf, "%s %s:%s", (char *)"SharedKeyLite", (char *)_accountPtr->AccountName.c_str(), base64EncOut);
-                sprintf(retBuf, "%s %s:%s", (char *)"SharedKeyLite", (char *)_accountPtr->AccountName.c_str(), hmacResultBase64);
-                //return "SharedKeyLite " + _accountPtr->AccountName + ":" + base64EncOut;
-                authorizationHeader = retBuf;
-                return authorizationHeader;
-            }
-            else
-            {
-                //sprintf(retBuf, "%s %s:%s", (char *)"SharedKey", (char *)_accountPtr->AccountName.c_str(), base64EncOut);
-                sprintf(retBuf, "%s %s:%s", (char *)"SharedKey", (char *)_accountPtr->AccountName.c_str(), hmacResultBase64);
-                //return "SharedKey " + _account.AccountName + ":" + signature;
-                //return "SharedKey " + _accountPtr->AccountName + ":" + base64EncOut;
-                authorizationHeader = retBuf;
-                return authorizationHeader;
-            }
-            
-            
-
-            //return "Hallo";
-        }
+    char retBuf[_accountPtr->AccountName.length() + strlen(hmacResultBase64) + 20] {0};
+    String authorizationHeader;
+    if (useSharedKeyLite)
+    {              
+        sprintf(retBuf, "%s %s:%s", (char *)"SharedKeyLite", (char *)_accountPtr->AccountName.c_str(), hmacResultBase64);               
+        authorizationHeader = retBuf;
+        return authorizationHeader;
+    }
+    else
+    {                
+        sprintf(retBuf, "%s %s:%s", (char *)"SharedKey", (char *)_accountPtr->AccountName.c_str(), hmacResultBase64);                
+        authorizationHeader = retBuf;
+        return authorizationHeader;
+    }        
+ }
 
 
 
