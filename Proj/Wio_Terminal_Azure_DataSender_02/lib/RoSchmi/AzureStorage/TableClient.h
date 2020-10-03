@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include <AzureStorage/CloudStorageAccount.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
@@ -10,6 +11,11 @@
 #include "mbedtls/sha256.h"
 
 #include "DateTime.h"
+
+
+
+
+
 
 #ifndef _TABLECLIENT_H_
 #define _TABLECLIENT_H_

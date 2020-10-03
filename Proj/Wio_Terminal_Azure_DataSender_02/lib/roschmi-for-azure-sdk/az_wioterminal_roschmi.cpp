@@ -18,7 +18,7 @@
 
 #include <azure/core/az_platform.h>
 
-
+//#include <az_wioterminal_roschmi.h>
 
 /*
 #ifdef __cplusplus
@@ -72,9 +72,9 @@ az_http_client_send_request(az_http_request const* request, az_http_response* re
 // this defines clockCyclesPerMicrosecond if its not already defined
 AZ_NODISCARD int64_t az_platform_clock_msec() 
 {
-  #ifndef clockCyclesPerMicrosecond()
-    #define clockCyclesPerMicrosecond() ( F_CPU / 1000000L )
-  #endif
+  //#ifndef clockCyclesPerMicrosecond()
+  //  #define clockCyclesPerMicrosecond() ( F_CPU / 1000000L )
+  //#endif
   
    return (int64_t)((int64_t)clockCyclesPerMicrosecond() * 1000L); 
 

@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <Encryption/RoSchmi_encryption_helpers.h>
+#include <AzureStorage/roschmi_az_storage_tables.h>
 
 
 String VersionHeader = "2015-04-05";
@@ -236,41 +237,6 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
             //String content5 = content.substring(450, 570);
             //delete[] addBuffer;
             volatile int dummy2 = 1;
-            
-
-            /*
-            char buf[300];
-            sprintf(buf,"<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>" +
-           "<entry xmlns:d=\"http://schemas.microsoft.com/ado/2007/08/dataservices\"  " +
-           "xmlns:m=\"http://schemas.microsoft.com/ado/2007/08/dataservices/metadata\" " +
-           "xmlns=\"http://www.w3.org/2005/Atom\"> " +
-           "<id>http://" + _account.AccountName + ".table.core.windows.net/Tables('"
-               + tableName +
-           "')</id>" +
-           "<title />" +
-           "<updated>" + DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.0000000Z") + "</updated>" +
-           "<author><name/></author> " +
-           "<content type=\"application/xml\"><m:properties><d:TableName>" + tableName + "</d:TableName></m:properties></content></entry>" )
-            */
-            /*
-            content = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>" +
-           "<entry xmlns:d=\"http://schemas.microsoft.com/ado/2007/08/dataservices\"  " +
-           "xmlns:m=\"http://schemas.microsoft.com/ado/2007/08/dataservices/metadata\" " +
-           "xmlns=\"http://www.w3.org/2005/Atom\"> " +
-           "<id>http://" + _accountPtr->AccountName + ".table.core.windows.net/Tables('"
-               + tableName +
-           "')</id>" +
-           "<title />" +
-           "<updated>" + timestamp + "</updated>" +
-           "<author><name/></author> " +
-           "<content type=\"application/xml\"><m:properties><d:TableName>" + tableName + "</d:TableName></m:properties></content></entry>";
-           */
-            
-            //DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.0000000Z")
-            
-            
-
-
 
             String HttpVerb = "POST";
             String ContentMD5 = "";
@@ -280,13 +246,8 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
             
             // byte[] payload = GetBodyBytesAndLength(content, out contentLength);
             
-            
-            
-           
-            //String authorizationHeader = CreateTableAuthorizationHeader(payload, String.Format("/{0}/{1}", _account.AccountName, "Tables()"), timestamp, HttpVerb, pContentType, out ContentMD5, out hashContentMD5, useSharedKeyLite = false);
-         
-            char Account_Tables[100];
-            sprintf(Account_Tables, "/%s/%s", (char *)_accountPtr->AccountName.c_str(), (char *)"Tables()");
+            char accountName_and_Tables[_accountPtr->AccountName.length() + 15];
+            sprintf(accountName_and_Tables, "/%s/%s", (char *)_accountPtr->AccountName.c_str(), (char *)"Tables()");
             
             //char hushBuffer[1000];
             //int hashBufferLength = 1000;
@@ -295,23 +256,49 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
             int hashBufferLength = 500;
 
             char md5Buffer[32 +1];
+            String authorizationHeader = CreateTableAuthorizationHeader((char *)addBuffer, accountName_and_Tables, timestamp, HttpVerb, pContentType, md5Buffer, hushBuffer, hashBufferLength, useSharedKeyLite = false);
+                      
+            //string urlPath = String.Format("{0}", tableName);
+            String urlPath = tableName;
+           
+            
+            char canonResourceBuffer[_accountPtr->AccountName.length() + urlPath.length() + 5];
+            sprintf(canonResourceBuffer, "/%s/%s", (char *)_accountPtr->AccountName.c_str(), tableName);
+            String canonicalizedResource = canonResourceBuffer;
+           
+            //string canonicalizedHeaders = String.Format("Date:{0}\nx-ms-date:{1}\nx-ms-version:{2}", timestamp, timestamp, VersionHeader);
+            
+            char canonHeadersBuffer[50];
+            sprintf(canonHeadersBuffer, "Date:%s\nx-ms-date:%s\nx-ms-version:%s", (char *)timestamp.c_str(), (char *)timestamp.c_str(), (char *)VersionHeader.c_str());
+            String canonicalizedHeaders = canonHeadersBuffer;
 
-            //EncryptResults encryptResults = CreateTableAuthorizationHeader((char *)addBuffer, (char *)Account_Tables, timestamp, HttpVerb, pContentType, hushBuffer, hashBufferLength, useSharedKeyLite = false);
+            //string TableEndPoint = _account.UriEndpoints["Table"].ToString();
+            String TableEndPoint = _accountPtr->UriEndPointTable;
+            
+            az_storage_tables_client tabClient;        
+            az_storage_tables_client_options options = az_storage_tables_client_options_default();
+            
+            
 
+             if (az_storage_tables_client_init(
+          &tabClient, az_span_create_from_str((char *)TableEndPoint.c_str()), AZ_CREDENTIAL_ANONYMOUS, &options)
+      != AZ_OK)
+  {
+      volatile int dummy643 = 1;
+    
+  }
 
-            String encryptResults = CreateTableAuthorizationHeader((char *)addBuffer, Account_Tables, timestamp, HttpVerb, pContentType, md5Buffer, hushBuffer, hashBufferLength, useSharedKeyLite = false);
+   volatile az_span theEndpoint =  tabClient._internal.endpoint;
+
+   volatile int dummy547 = 1;
+  
+        
+
             return AZ_HTTP_STATUS_CODE_CREATED;
             /*
-            string urlPath = String.Format("{0}", tableName);
-           
-            string canonicalizedResource = String.Format("/{0}/{1}", _account.AccountName, urlPath);
-           
-            string canonicalizedHeaders = String.Format("Date:{0}\nx-ms-date:{1}\nx-ms-version:{2}", timestamp, timestamp, VersionHeader);
-
-            string TableEndPoint = _account.UriEndpoints["Table"].ToString();
-
+            // Uri uri = new Uri(TableEndPoint + "/Tables()");
             Uri uri = new Uri(TableEndPoint + "/Tables()");
-
+ 
             var tableTypeHeaders = new Hashtable();
             tableTypeHeaders.Add("Accept-Charset", "UTF-8");
             tableTypeHeaders.Add("MaxDataServiceVersion", "3.0;NetFx");

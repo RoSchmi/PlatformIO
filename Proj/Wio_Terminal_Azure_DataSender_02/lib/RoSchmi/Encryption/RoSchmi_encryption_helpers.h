@@ -20,7 +20,6 @@ void stringToHexString(char * output, const char * input, const char * delimiter
 
 int base64_decode(const char * input, char * output);
 
-//int base64_encode(const char * input, char * output);
 int base64_encode(const char * input, const size_t inputLength, char * output, const size_t outputLength);
 
 
