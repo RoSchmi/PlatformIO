@@ -25,6 +25,9 @@
 
 #include <azure/core/_az_cfg_prefix.h>
 
+//RoSchmi
+#define AZ_NO_PRECONDITION_CHECKING
+
 /**
  * @brief Represents a "view" over a byte buffer that represents a contiguous region of memory. It
  * contains a pointer to the start of the byte buffer and the buffer's size.

@@ -48,7 +48,7 @@ typedef struct
     /// Services pass API versions in the header or in query parameters used by the API Version
     /// policy.
     _az_http_policy_apiversion_options api_version;
-
+    
     /// Options for the telemetry policy.
     _az_http_policy_telemetry_options telemetry_options;
   } _internal;
@@ -101,6 +101,9 @@ typedef struct
   {
     /// Currently, this is unused, but needed as a placeholder since we can't have an empty struct.
     bool unused;
+    az_span contentType;
+    az_span perferType;
+
   } _internal;
 } az_storage_tables_upload_options;
 
@@ -127,7 +130,11 @@ AZ_NODISCARD AZ_INLINE az_storage_tables_upload_options
 az_storage_tables_upload_options_default()
 {
   return (az_storage_tables_upload_options){ .context = &az_context_application,
-                                                 ._internal = { .unused = false } };
+                                                 ._internal = { 
+                                                   .unused = false,
+                                                   .contentType = AZ_SPAN_LITERAL_FROM_STR("application/atom+xml"),
+                                                   .perferType = AZ_SPAN_LITERAL_FROM_STR("application/json"),
+                                                  } };
 }
 
 /**
@@ -147,6 +154,7 @@ az_storage_tables_upload_options_default()
 AZ_NODISCARD az_result az_storage_tables_upload(
     az_storage_tables_client* ref_client,
     az_span content,
+    az_span contentMd5,
     az_storage_tables_upload_options const* options,
     az_http_response* ref_response);
 

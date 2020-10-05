@@ -31,6 +31,7 @@ static SysTime sysTime;
 String GetDateHeader();
 String getContentTypeString(ContType pContentType);
 String getAcceptTypeString(AcceptType pAcceptType);
+String getResponseTypeString(ResponseType pResponseType);
 int base64_decode(const char * input, char * output);
 
 String TableClient::CreateTableAuthorizationHeader(char * content, char * canonicalResource, String ptimeStamp, String pHttpVerb, ContType pContentType, char * pMD5HashHex, char * pHash, int pHashLen, bool useSharedKeyLite)
@@ -277,6 +278,7 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
             
             az_storage_tables_client tabClient;        
             az_storage_tables_client_options options = az_storage_tables_client_options_default();
+           
             
             
 
@@ -290,12 +292,37 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
 
    volatile az_span theEndpoint =  tabClient._internal.endpoint;
 
+   uint8_t response_buffer[1024] = { 0 };
+  az_http_response http_response;
+  if (az_result_failed(az_http_response_init(&http_response, AZ_SPAN_FROM_BUFFER(response_buffer))))
+  {
+     volatile int dummy644 = 1;
+  }
+  
+  if (az_http_response_init(&http_response, AZ_SPAN_FROM_BUFFER(response_buffer)) != AZ_OK)
+  {
+    volatile int dummy645 = 1;
+    
+  }
+
+  static az_span content_to_upload = AZ_SPAN_LITERAL_FROM_STR("Some test content");
+  
+  az_storage_tables_upload_options uploadOptions = az_storage_tables_upload_options_default();
+  uploadOptions._internal.contentType = az_span_create_from_str((char *)contentType.c_str());
+  uploadOptions._internal.perferType = az_span_create_from_str((char *)getResponseTypeString(pResponseType).c_str());
+
+  az_result const blob_upload_result
+      = az_storage_tables_upload(&tabClient, content_to_upload, az_span_create_from_str(md5Buffer), &uploadOptions, &http_response);
+
+
+   //tabClient._internal.credential->_internal.apply_credential_policy
+
    volatile int dummy547 = 1;
   
         
 
-            return AZ_HTTP_STATUS_CODE_CREATED;
-            /*
+           /*
+            
             // Uri uri = new Uri(TableEndPoint + "/Tables()");
             Uri uri = new Uri(TableEndPoint + "/Tables()");
  
@@ -306,7 +333,11 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
             tableTypeHeaders.Add("DataServiceVersion", "3.0");
             tableTypeHeaders.Add("Prefer", getResponseTypeString(pResponseType));
             tableTypeHeaders.Add("Content-MD5", ContentMD5);
+            */
 
+ return AZ_HTTP_STATUS_CODE_CREATED;
+
+            /*
             if (_fiddlerIsAttached)
             { AzureStorageHelper.AttachFiddler(_fiddlerIsAttached, _fiddlerIP, _fiddlerPort); }
 
@@ -383,6 +414,14 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
             { return "application/atom+xml"; }
             else
             { return "application/json"; }
+        }
+
+        String getResponseTypeString(ResponseType pResponseType)
+        {
+            if (pResponseType == returnContent)
+            { return "return-content"; }
+            else
+            { return "return-no-content"; }
         }
         /*
         byte[] GetBodyBytesAndLength(string body, out int contentLength)

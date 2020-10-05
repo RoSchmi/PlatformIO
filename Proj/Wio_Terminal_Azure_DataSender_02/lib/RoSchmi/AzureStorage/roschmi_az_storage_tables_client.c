@@ -14,6 +14,8 @@
 #include <azure/core/Internal/az_retry_internal.h>
 
 #include <azure/core/internal/az_span_internal.h>
+
+
 //#include <azure/storage/az_storage_blobs.h>
 #include <AzureStorage/roschmi_az_storage_tables.h>
 
@@ -35,29 +37,24 @@ static az_span const AZ_STORAGE_BLOBS_BLOB_HEADER_X_MS_BLOB_TYPE
 
 static az_span const AZ_STORAGE_BLOBS_BLOB_TYPE_BLOCKBLOB = AZ_SPAN_LITERAL_FROM_STR("BlockBlob");
 
+static az_span const AZ_STORAGE_TABLES_HEADER_ACCEPT_CHARSET
+    = AZ_SPAN_LITERAL_FROM_STR("Accept-Charset");
+
+static az_span const AZ_STORAGE_TABLES_CHARSET_UTF8 = AZ_SPAN_LITERAL_FROM_STR("UTF-8");
+
+
+static az_span const AZ_STORAGE_TABLES_HEADER_MAX_DATASERVICE_VERSION
+    = AZ_SPAN_LITERAL_FROM_STR("MaxDataServiceVersion");
+
+
+
+static az_span const AZ_STORAGE_TABLES_DATASERVICE_VERS_3_0_NETFX = AZ_SPAN_LITERAL_FROM_STR("3.0;NetFx");
+
+
+
+
 static az_span const AZ_HTTP_HEADER_CONTENT_LENGTH = AZ_SPAN_LITERAL_FROM_STR("Content-Length");
 static az_span const AZ_HTTP_HEADER_CONTENT_TYPE = AZ_SPAN_LITERAL_FROM_STR("Content-Type");
-
-
-/* RoSchmi: steht normalerweise woanders -> löschen
-static az_http_status_code const _default_status_codes[] = {
-  AZ_HTTP_STATUS_CODE_REQUEST_TIMEOUT,       AZ_HTTP_STATUS_CODE_TOO_MANY_REQUESTS,
-  AZ_HTTP_STATUS_CODE_INTERNAL_SERVER_ERROR, AZ_HTTP_STATUS_CODE_BAD_GATEWAY,
-  AZ_HTTP_STATUS_CODE_SERVICE_UNAVAILABLE,   AZ_HTTP_STATUS_CODE_GATEWAY_TIMEOUT,
-  AZ_HTTP_STATUS_CODE_END_OF_LIST,
-};
-
-AZ_NODISCARD az_http_policy_retry_options _az_http_policy_retry_options_default()
-{
-  return (az_http_policy_retry_options){
-    .max_retries = 4,
-    .retry_delay_msec = 4 * _az_TIME_MILLISECONDS_PER_SECOND, // 4 seconds
-    .max_retry_delay_msec
-    = 2 * _az_TIME_SECONDS_PER_MINUTE * _az_TIME_MILLISECONDS_PER_SECOND, // 2 minutes
-    .status_codes = _default_status_codes,
-  };
-}
-*/
 
 
 AZ_NODISCARD az_storage_tables_client_options az_storage_tables_client_options_default()
@@ -161,6 +158,93 @@ AZ_NODISCARD az_result az_storage_tables_client_init(
 
   return AZ_OK;
 }
+
+AZ_NODISCARD az_result az_storage_tables_upload(
+    az_storage_tables_client* ref_client,
+    az_span content, // Buffer of content
+    az_span contentMd5,  // Md5 hash of content
+    az_storage_tables_upload_options const* options,
+    az_http_response* ref_response)
+{
+
+  az_storage_tables_upload_options opt;
+  if (options == NULL)
+  {
+    opt = az_storage_tables_upload_options_default();
+  }
+  else
+  {
+    opt = *options;
+  }
+
+  // Request buffer
+  // create request buffer TODO: define size for a blob upload
+  uint8_t url_buffer[ROSCHMI_AZ_HTTP_REQUEST_URL_BUFFER_SIZE];
+  az_span request_url_span = AZ_SPAN_FROM_BUFFER(url_buffer);
+  // copy url from client
+  int32_t uri_size = az_span_size(ref_client->_internal.endpoint);
+  _az_RETURN_IF_NOT_ENOUGH_SIZE(request_url_span, uri_size);
+  az_span_copy(request_url_span, ref_client->_internal.endpoint);
+
+  uint8_t headers_buffer[_az_STORAGE_HTTP_REQUEST_HEADER_BUFFER_SIZE];
+  az_span request_headers_span = AZ_SPAN_FROM_BUFFER(headers_buffer);
+
+  // create request
+  az_http_request request;
+  _az_RETURN_IF_FAILED(az_http_request_init(
+      &request,
+      opt.context,
+      az_http_method_put(),
+      request_url_span,
+      uri_size,
+      request_headers_span,
+      content));
+    
+     // _az_RETURN_IF_FAILED(az_http_request_append_header(
+     // &request, AZ_STORAGE_BLOBS_BLOB_HEADER_X_MS_BLOB_TYPE, AZ_STORAGE_BLOBS_BLOB_TYPE_BLOCKBLOB));
+    
+     _az_RETURN_IF_FAILED(az_http_request_append_header(
+      &request, AZ_STORAGE_TABLES_HEADER_ACCEPT_CHARSET, AZ_STORAGE_TABLES_CHARSET_UTF8));
+
+      _az_RETURN_IF_FAILED(az_http_request_append_header(
+      &request, AZ_STORAGE_TABLES_HEADER_MAX_DATASERVICE_VERSION, AZ_STORAGE_TABLES_DATASERVICE_VERS_3_0_NETFX));
+
+     
+      _az_RETURN_IF_FAILED(az_http_request_append_header(
+      &request, AZ_HTTP_HEADER_CONTENT_TYPE, options->_internal.contentType));
+      
+  uint8_t content_length[_az_INT64_AS_STR_BUFFER_SIZE] = { 0 };
+  az_span content_length_span = AZ_SPAN_FROM_BUFFER(content_length);
+  az_span remainder;
+  _az_RETURN_IF_FAILED(az_span_i64toa(content_length_span, az_span_size(content), &remainder));
+  content_length_span
+      = az_span_slice(content_length_span, 0, _az_span_diff(remainder, content_length_span));
+
+  // add Content-Length to request
+  _az_RETURN_IF_FAILED(
+      az_http_request_append_header(&request, AZ_HTTP_HEADER_CONTENT_LENGTH, content_length_span));
+
+  // add blob type to request
+  /*
+  _az_RETURN_IF_FAILED(az_http_request_append_header(
+      &request, AZ_HTTP_HEADER_CONTENT_TYPE, AZ_SPAN_FROM_STR("text/plain")));
+  */
+
+  // start pipeline
+  
+  //RoSchmi
+  // show how headers can be accessed
+  volatile size_t headerCount = az_http_request_headers_count(&request);
+  az_span header_name = { 0 };
+  az_span header_value = { 0 };
+  az_http_request_get_header(&request, 1, &header_name, &header_value);
+
+  return az_http_pipeline_process(&ref_client->_internal.pipeline, &request, ref_response);
+
+}
+
+
+
 
 
 /*
