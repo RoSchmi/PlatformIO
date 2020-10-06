@@ -12,10 +12,7 @@
 
 #include "DateTime.h"
 
-
-
-
-
+#include <az_wioterminal_roschmi.h>
 
 #ifndef _TABLECLIENT_H_
 #define _TABLECLIENT_H_

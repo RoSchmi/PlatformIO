@@ -18,7 +18,7 @@
 
 #include <azure/core/az_platform.h>
 
-//#include <az_wioterminal_roschmi.h>
+#include <az_wioterminal_roschmi.h>
 
 /*
 #ifdef __cplusplus
@@ -26,6 +26,12 @@ extern "C"
 {
 #endif // __cplusplus
 */
+
+
+HTTPClient *  deviceHttp = NULL;
+
+const char * _caCertificate;
+
 
 /**
  * @brief uses AZ_HTTP_BUILDER to set up CURL request and perform it.
@@ -48,9 +54,44 @@ az_http_client_send_request(az_http_request const* request, az_http_response* re
   //az_span requUrl = request->_internal.url;
   az_span requUrl = az_span_slice(request->_internal.url, 0, 100);
   
+  
+
   char requUrlStr [101];
   az_span_to_str(requUrlStr, 101, requUrl);
   String requUrlString = String(requUrlStr);
+
+    String theUrl = "jsonplaceholder.typicode.com";
+    String thePath = "/posts?userId=1";
+    
+    deviceHttp->begin(theUrl, (uint16_t)443, thePath, _caCertificate);
+    int httpCode = deviceHttp->GET();
+    if (httpCode > 0) { //Check for the returning code 
+      String payload = deviceHttp->getString();
+      //lcd_log_line("Http-Code:");
+      //lcd_log_line(itoa((int)httpCode, buf, 10));
+      int length = payload.length();
+      int indexCtr = 0;
+      int pageWidth = 30;
+      Serial.println(httpCode);
+      delay(2000);
+      while (indexCtr < length)
+      {
+        indexCtr += pageWidth;
+      } 
+       Serial.println(payload);
+    }
+    else {
+     // Serial.println("Error on HTTP request");
+      volatile int dummy2 = 1;
+      dummy2++;
+    }
+
+
+
+  //_httpPtr->begin(requUrlStr, 443, "/", _caCert);
+
+
+
   volatile int32_t queryStart = request->_internal.query_start;
   
   //String respString = "HTTP/1.1 200 OK";
@@ -86,5 +127,18 @@ AZ_NODISCARD int64_t az_platform_clock_msec()
 void az_platform_sleep_msec(int32_t milliseconds) 
 { 
   delay(milliseconds); 
+}
+
+void setHttpClient(HTTPClient * httpClient)
+{
+  if (deviceHttp == NULL)
+  {
+      deviceHttp = httpClient;
+  }
+}
+
+void setCaCert(const char * caCert)
+{
+  _caCertificate = caCert;
 }
 

@@ -28,7 +28,10 @@
 
 #include <azure/core/_az_cfg_prefix.h>
 
+//#include <HTTPClient.h>
+
 #define ROSCHMI_AZ_HTTP_REQUEST_URL_BUFFER_SIZE 200
+
 
 /**
  * @brief Client is fixed to a specific version of the Azure Storage Tables service.
@@ -70,6 +73,10 @@ typedef struct
     _az_credential* credential;
   } _internal;
 } az_storage_tables_client;
+
+// RoSchmi
+//const char *_caCert;
+//HTTPClient * _httpPtr;
 
 /**
  * @brief Initialize a client with default options.
@@ -151,6 +158,16 @@ az_storage_tables_upload_options_default()
  * @retval #AZ_OK Success.
  * @retval other Failure.
  */
+
+/*
+AZ_NODISCARD az_result az_storage_tables_upload(
+    az_storage_tables_client* ref_client,
+    az_span content,
+    az_span contentMd5,
+    az_storage_tables_upload_options const* options,
+    az_http_request* ref_request,
+    az_http_response* ref_response);
+*/
 AZ_NODISCARD az_result az_storage_tables_upload(
     az_storage_tables_client* ref_client,
     az_span content,

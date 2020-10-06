@@ -29,7 +29,7 @@
 
 #define HTTPCLIENT_1_1_COMPATIBLE
 
-#include <memory.h>
+#include <memory>
 #include <Arduino.h>
 #include <WiFiClient.h>
 #include <WiFiClientSecure.h>

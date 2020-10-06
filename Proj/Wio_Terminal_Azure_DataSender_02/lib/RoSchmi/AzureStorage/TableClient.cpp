@@ -165,11 +165,13 @@ TableClient::TableClient(CloudStorageAccount *account, const char * caCert, HTTP
     //_accountPtr->AccountKey = account->AccountKey;
     //_accountPtr->AccountName = account->AccountName;
     //_accountPtr->UriEndPointTable = account->UriEndPointTable;
+
     _caCert = caCert;
     _httpPtr = httpClient;
 }
 TableClient::~TableClient()
 {};
+
 
 void TableClient::send()
 {
@@ -191,10 +193,10 @@ void TableClient::send()
       {
         indexCtr += pageWidth;
       } 
-      Serial.println(payload);
+     // Serial.println(payload);
     }
     else {
-      Serial.println("Error on HTTP request");
+     // Serial.println("Error on HTTP request");
       volatile int dummy2 = 1;
       dummy2++;
     }
@@ -280,8 +282,6 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
             az_storage_tables_client_options options = az_storage_tables_client_options_default();
            
             
-            
-
              if (az_storage_tables_client_init(
           &tabClient, az_span_create_from_str((char *)TableEndPoint.c_str()), AZ_CREDENTIAL_ANONYMOUS, &options)
       != AZ_OK)
@@ -298,6 +298,9 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
   {
      volatile int dummy644 = 1;
   }
+
+
+
   
   if (az_http_response_init(&http_response, AZ_SPAN_FROM_BUFFER(response_buffer)) != AZ_OK)
   {
@@ -311,10 +314,21 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
   uploadOptions._internal.contentType = az_span_create_from_str((char *)contentType.c_str());
   uploadOptions._internal.perferType = az_span_create_from_str((char *)getResponseTypeString(pResponseType).c_str());
 
+// uint8_t request_buffer[1024] = { 0 };
+// az_http_request_init
+// az_http_request http_request;
+
+
+  //az_result const blob_upload_result
+  //    = az_storage_tables_upload(&tabClient, content_to_upload, az_span_create_from_str(md5Buffer), &uploadOptions, &http_request, &http_response);
+
+    setHttpClient(_httpPtr);
+    setCaCert(_caCert);
+
   az_result const blob_upload_result
       = az_storage_tables_upload(&tabClient, content_to_upload, az_span_create_from_str(md5Buffer), &uploadOptions, &http_response);
 
-
+    //tabClient._internal.options
    //tabClient._internal.credential->_internal.apply_credential_policy
 
    volatile int dummy547 = 1;

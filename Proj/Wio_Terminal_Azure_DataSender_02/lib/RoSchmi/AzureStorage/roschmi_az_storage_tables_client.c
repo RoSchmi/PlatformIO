@@ -15,9 +15,12 @@
 
 #include <azure/core/internal/az_span_internal.h>
 
-
-//#include <azure/storage/az_storage_blobs.h>
 #include <AzureStorage/roschmi_az_storage_tables.h>
+//#include <azure/storage/az_storage_blobs.h>
+
+
+
+//#include <HTTPClient.h>
 
 //#include <roschmi-for-azure-sdk/az_wioterminal_roschmi.h>
 
@@ -26,6 +29,10 @@
 #include <stddef.h>
 
 #include <azure/core/_az_cfg.h>
+
+
+//HTTPClient * _httpPtr;
+//const char * _caCert;
 
 enum
 {
@@ -71,7 +78,6 @@ AZ_NODISCARD az_storage_tables_client_options az_storage_tables_client_options_d
       .telemetry_options = _az_http_policy_telemetry_options_default(),
     },
     .retry_options = _az_http_policy_retry_options_default(),
-    
   };
 
   options.retry_options.max_retries = 5;
@@ -158,7 +164,15 @@ AZ_NODISCARD az_result az_storage_tables_client_init(
 
   return AZ_OK;
 }
-
+/*
+AZ_NODISCARD az_result az_storage_tables_upload(
+    az_storage_tables_client* ref_client,
+    az_span content, // Buffer of content
+    az_span contentMd5,  // Md5 hash of content
+    az_storage_tables_upload_options const* options,
+    az_http_request* ref_request,
+    az_http_response* ref_response)
+*/
 AZ_NODISCARD az_result az_storage_tables_upload(
     az_storage_tables_client* ref_client,
     az_span content, // Buffer of content
@@ -239,7 +253,9 @@ AZ_NODISCARD az_result az_storage_tables_upload(
   az_span header_value = { 0 };
   az_http_request_get_header(&request, 1, &header_name, &header_value);
 
-  return az_http_pipeline_process(&ref_client->_internal.pipeline, &request, ref_response);
+  az_result pipelineResult = az_http_pipeline_process(&ref_client->_internal.pipeline, &request, ref_response);
+
+  return pipelineResult;
 
 }
 
