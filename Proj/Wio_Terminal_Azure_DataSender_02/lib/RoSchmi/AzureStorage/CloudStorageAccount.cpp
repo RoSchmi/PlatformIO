@@ -20,6 +20,14 @@ CloudStorageAccount::CloudStorageAccount(String accountName, String accountKey, 
     UriEndPointBlob = String(strData);
     sprintf(strData, "http%s://%s.queue.core.windows.net", insert, accountName.c_str());
     UriEndPointQueue = String(strData);
+
+    sprintf(strData, "%s.table.core.windows.net", accountName.c_str());
+    HostNameTable = String(strData);
+    sprintf(strData, "%s.blob.core.windows.net", accountName.c_str());
+    HostNameBlob = String(strData);
+    sprintf(strData, "%s.queue.core.windows.net", accountName.c_str());
+    HostNameQueue = String(strData);
+
 }
 
 /**

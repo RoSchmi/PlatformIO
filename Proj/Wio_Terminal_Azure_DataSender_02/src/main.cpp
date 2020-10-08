@@ -136,6 +136,9 @@ void setup() {
   Serial.begin(9600);
   Serial.println("\r\nHello, I'm starting ");
 
+  delay(20000);
+  lcd_log_line((char *)"Continue");
+
   char buf[42];
     sprintf(buf, "Connecting to SSID: %s", ssid);
     lcd_log_line(buf);
@@ -165,6 +168,7 @@ void setup() {
 
     Serial.println("\r\n> SUCCESS.");
 
+    // RoSchmi
     wifi_client.setCACert(baltimore_root_ca);
 
     ntp.begin();
@@ -199,7 +203,8 @@ void setup() {
     }
     */
    
-    CloudStorageAccount myCloudStorageAccount(AZURE_CONFIG_ACCOUNT_NAME, AZURE_CONFIG_ACCOUNT_KEY, true);
+    //CloudStorageAccount myCloudStorageAccount(AZURE_CONFIG_ACCOUNT_NAME, AZURE_CONFIG_ACCOUNT_KEY, true);
+    CloudStorageAccount myCloudStorageAccount(AZURE_CONFIG_ACCOUNT_NAME, AZURE_CONFIG_ACCOUNT_KEY, false);
     
     CloudStorageAccount * myCloudStorageAccountPtr = &myCloudStorageAccount;
 
@@ -212,6 +217,8 @@ void setup() {
 //https://myaccount.blob.core.windows.net/mycontainer/myblob
 // https://docs.microsoft.com/de-de/rest/api/storageservices/naming-and-referencing-containers--blobs--and-metadata
 
+
+/*
     az_storage_blobs_blob_client client;
 
     az_storage_blobs_blob_client_options options = az_storage_blobs_blob_client_options_default();
@@ -232,9 +239,13 @@ void setup() {
   az_span theEndpoint = client._internal.endpoint;
 
    volatile uint32_t theLenght = theEndpoint._internal.size;
+*/
+
  
   // Prepare response
   //uint8_t response_buffer[1024 * 4] = { 0 };
+
+  /*
   uint8_t response_buffer[1024 * 1] = { 0 };      // may not be > 2048 otherwise http Client crashes
   az_http_response http_response;
   
@@ -242,7 +253,7 @@ void setup() {
   {
     lcd_log_line((char *)"Failed http response");
   }
-
+  */
 delay(1000);
     current_text_line = 0;
     tft.fillScreen(TFT_WHITE);
@@ -253,7 +264,8 @@ X509Certificate myX509Certificate = baltimore_root_ca;
 TableClient table(myCloudStorageAccountPtr, myX509Certificate, httpPtr);
 //TableClient table(myCloudStorageAccount, myX509Certificate, httpPtr);
 
-table.send();
+// RoSchmi
+//table.send();
 
 //String tableName = "newtable";
 

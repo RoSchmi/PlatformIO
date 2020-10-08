@@ -175,8 +175,13 @@ TableClient::~TableClient()
 
 void TableClient::send()
 {
+    /*
     String theUrl = "jsonplaceholder.typicode.com";
     String thePath = "/posts?userId=1";
+
+
+    String theUrl = "prax47.table.core.windows.net";
+    String thePath = "/";     
     
     _httpPtr->begin(theUrl, (uint16_t)443, thePath, _caCert);
     int httpCode = _httpPtr->GET();
@@ -200,6 +205,7 @@ void TableClient::send()
       volatile int dummy2 = 1;
       dummy2++;
     }
+    */
 }
 
 
@@ -277,13 +283,14 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
 
             //string TableEndPoint = _account.UriEndpoints["Table"].ToString();
             String TableEndPoint = _accountPtr->UriEndPointTable;
+            String Host = _accountPtr->HostNameTable;
             
             az_storage_tables_client tabClient;        
             az_storage_tables_client_options options = az_storage_tables_client_options_default();
            
             
              if (az_storage_tables_client_init(
-          &tabClient, az_span_create_from_str((char *)TableEndPoint.c_str()), AZ_CREDENTIAL_ANONYMOUS, &options)
+          &tabClient, az_span_create_from_str((char *)Host.c_str()), AZ_CREDENTIAL_ANONYMOUS, &options)
       != AZ_OK)
   {
       volatile int dummy643 = 1;

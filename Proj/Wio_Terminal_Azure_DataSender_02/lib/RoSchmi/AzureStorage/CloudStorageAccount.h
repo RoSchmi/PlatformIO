@@ -17,6 +17,10 @@ public:
     String UriEndPointBlob;
     String UriEndPointQueue;
     String UriEndPointTable;
+    String HostNameBlob;
+    String HostNameQueue;
+    String HostNameTable;
+
 };
 
 

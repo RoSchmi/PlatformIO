@@ -31,8 +31,7 @@
 #include <azure/core/_az_cfg.h>
 
 
-//HTTPClient * _httpPtr;
-//const char * _caCert;
+
 
 enum
 {
@@ -164,15 +163,7 @@ AZ_NODISCARD az_result az_storage_tables_client_init(
 
   return AZ_OK;
 }
-/*
-AZ_NODISCARD az_result az_storage_tables_upload(
-    az_storage_tables_client* ref_client,
-    az_span content, // Buffer of content
-    az_span contentMd5,  // Md5 hash of content
-    az_storage_tables_upload_options const* options,
-    az_http_request* ref_request,
-    az_http_response* ref_response)
-*/
+
 AZ_NODISCARD az_result az_storage_tables_upload(
     az_storage_tables_client* ref_client,
     az_span content, // Buffer of content
@@ -253,9 +244,7 @@ AZ_NODISCARD az_result az_storage_tables_upload(
   az_span header_value = { 0 };
   az_http_request_get_header(&request, 1, &header_name, &header_value);
 
-  az_result pipelineResult = az_http_pipeline_process(&ref_client->_internal.pipeline, &request, ref_response);
-
-  return pipelineResult;
+  return az_http_pipeline_process(&ref_client->_internal.pipeline, &request, ref_response);
 
 }
 
