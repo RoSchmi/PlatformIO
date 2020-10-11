@@ -14,12 +14,14 @@ public:
 
     String AccountName;
     String AccountKey;
-    String UriEndPointBlob;
-    String UriEndPointQueue;
+    //String UriEndPointBlob;
+    //String UriEndPointQueue;
     String UriEndPointTable;
-    String HostNameBlob;
-    String HostNameQueue;
+    //String HostNameBlob;
+    //String HostNameQueue;
     String HostNameTable;
+
+    
 
 };
 

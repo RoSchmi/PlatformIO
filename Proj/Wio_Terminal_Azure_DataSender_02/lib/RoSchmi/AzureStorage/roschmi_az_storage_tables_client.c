@@ -35,13 +35,40 @@
 
 enum
 {
-  _az_STORAGE_HTTP_REQUEST_HEADER_BUFFER_SIZE = 10 * sizeof(_az_http_request_header),
+  _az_STORAGE_HTTP_REQUEST_HEADER_BUFFER_SIZE = 14 * sizeof(_az_http_request_header),
 };
 
-static az_span const AZ_STORAGE_BLOBS_BLOB_HEADER_X_MS_BLOB_TYPE
-    = AZ_SPAN_LITERAL_FROM_STR("x-ms-blob-type");
+//static az_span const AZ_STORAGE_BLOBS_BLOB_HEADER_X_MS_BLOB_TYPE
+//    = AZ_SPAN_LITERAL_FROM_STR("x-ms-blob-type");
 
-static az_span const AZ_STORAGE_BLOBS_BLOB_TYPE_BLOCKBLOB = AZ_SPAN_LITERAL_FROM_STR("BlockBlob");
+//static az_span const AZ_STORAGE_BLOBS_BLOB_TYPE_BLOCKBLOB = AZ_SPAN_LITERAL_FROM_STR("BlockBlob");
+
+//static az_span const AZ_STORAGE_TABLES_HEADER_USER_AGENT
+//    = AZ_SPAN_LITERAL_FROM_STR("User-Agent");
+
+//static az_span const AZ_STORAGE_TABLES_USER_AGENT_NAME = AZ_SPAN_LITERAL_FROM_STR("RsWioClient"); 
+
+static az_span const AZ_STORAGE_TABLES_HEADER_ACCEPT
+    = AZ_SPAN_LITERAL_FROM_STR("Accept");
+
+static az_span const AZ_STORAGE_TABLES_ACCEPT_TYPE = AZ_SPAN_LITERAL_FROM_STR("application/json");
+
+   
+static az_span const AZ_STORAGE_TABLES_HEADER_XMS_DATE
+    = AZ_SPAN_LITERAL_FROM_STR("x-ms-date");
+
+static az_span const AZ_STORAGE_TABLES_HEADER_API_VERSION
+    = AZ_SPAN_LITERAL_FROM_STR("x-ms-version");
+
+static az_span const AZ_STORAGE_TABLES_HEADER_AUTHORIZATION
+    = AZ_SPAN_LITERAL_FROM_STR("Authorization");
+
+static az_span const AZ_STORAGE_TABLES_HEADER_CONTENT_MD5
+    = AZ_SPAN_LITERAL_FROM_STR("Content-MD5");
+
+static az_span const AZ_STORAGE_TABLES_HEADER_PREFERE
+    = AZ_SPAN_LITERAL_FROM_STR("Prefer");
+
 
 static az_span const AZ_STORAGE_TABLES_HEADER_ACCEPT_CHARSET
     = AZ_SPAN_LITERAL_FROM_STR("Accept-Charset");
@@ -49,19 +76,27 @@ static az_span const AZ_STORAGE_TABLES_HEADER_ACCEPT_CHARSET
 static az_span const AZ_STORAGE_TABLES_CHARSET_UTF8 = AZ_SPAN_LITERAL_FROM_STR("UTF-8");
 
 
+static az_span const AZ_STORAGE_TABLES_HEADER_DATASERVICE_VERSION
+    = AZ_SPAN_LITERAL_FROM_STR("DataServiceVersion");
+
+static az_span const AZ_STORAGE_TABLES_DATASERVICE_VERS_3_0 = AZ_SPAN_LITERAL_FROM_STR("3.0");
+
 static az_span const AZ_STORAGE_TABLES_HEADER_MAX_DATASERVICE_VERSION
     = AZ_SPAN_LITERAL_FROM_STR("MaxDataServiceVersion");
 
-
-
-static az_span const AZ_STORAGE_TABLES_DATASERVICE_VERS_3_0_NETFX = AZ_SPAN_LITERAL_FROM_STR("3.0;NetFx");
-
-
+static az_span const AZ_STORAGE_TABLES_MAX_DATASERVICE_VERS_3_0_NETFX = AZ_SPAN_LITERAL_FROM_STR("3.0;NetFx");
 
 
 static az_span const AZ_HTTP_HEADER_CONTENT_LENGTH = AZ_SPAN_LITERAL_FROM_STR("Content-Length");
 static az_span const AZ_HTTP_HEADER_CONTENT_TYPE = AZ_SPAN_LITERAL_FROM_STR("Content-Type");
 
+static az_span const AZ_HTTP_HEADER_CONNECTION
+    = AZ_SPAN_LITERAL_FROM_STR("Connection");
+
+static az_span const AZ_HTTP_CONNECTION_CLOSE = AZ_SPAN_LITERAL_FROM_STR("Close");
+
+static az_span const AZ_HTTP_HEADER_HOST
+    = AZ_SPAN_LITERAL_FROM_STR("Host");
 
 AZ_NODISCARD az_storage_tables_client_options az_storage_tables_client_options_default()
 {
@@ -168,6 +203,8 @@ AZ_NODISCARD az_result az_storage_tables_upload(
     az_storage_tables_client* ref_client,
     az_span content, // Buffer of content
     az_span contentMd5,  // Md5 hash of content
+    az_span authorizationHeader,
+    az_span timestamp,
     az_storage_tables_upload_options const* options,
     az_http_response* ref_response)
 {
@@ -189,7 +226,12 @@ AZ_NODISCARD az_result az_storage_tables_upload(
   // copy url from client
   int32_t uri_size = az_span_size(ref_client->_internal.endpoint);
   _az_RETURN_IF_NOT_ENOUGH_SIZE(request_url_span, uri_size);
-  az_span_copy(request_url_span, ref_client->_internal.endpoint);
+  //az_span_copy(request_url_span, ref_client->_internal.endpoint);
+  
+  // RoSchmi
+  request_url_span = az_span_slice(ref_client->_internal.endpoint, 0, uri_size);
+
+  //RoSchmi
 
   uint8_t headers_buffer[_az_STORAGE_HTTP_REQUEST_HEADER_BUFFER_SIZE];
   az_span request_headers_span = AZ_SPAN_FROM_BUFFER(headers_buffer);
@@ -199,27 +241,48 @@ AZ_NODISCARD az_result az_storage_tables_upload(
   _az_RETURN_IF_FAILED(az_http_request_init(
       &request,
       opt.context,
-      az_http_method_put(),
+      az_http_method_post(),
       request_url_span,
       uri_size,
       request_headers_span,
       content));
     
+    //_az_RETURN_IF_FAILED(az_http_request_append_header(
+    //  &request, AZ_STORAGE_TABLES_HEADER_USER_AGENT, AZ_STORAGE_TABLES_USER_AGENT_NAME));
+
+      _az_RETURN_IF_FAILED(az_http_request_append_header(
+      &request, AZ_STORAGE_TABLES_HEADER_ACCEPT, AZ_STORAGE_TABLES_ACCEPT_TYPE));
+
+      _az_RETURN_IF_FAILED(az_http_request_append_header(
+      &request, AZ_STORAGE_TABLES_HEADER_XMS_DATE, timestamp));
+
      // _az_RETURN_IF_FAILED(az_http_request_append_header(
-     // &request, AZ_STORAGE_BLOBS_BLOB_HEADER_X_MS_BLOB_TYPE, AZ_STORAGE_BLOBS_BLOB_TYPE_BLOCKBLOB));
-    
-     _az_RETURN_IF_FAILED(az_http_request_append_header(
+     // &request, AZ_STORAGE_TABLES_HEADER_API_VERSION, AZ_STORAGE_API_VERSION));
+
+      _az_RETURN_IF_FAILED(az_http_request_append_header(
+      &request, AZ_STORAGE_TABLES_HEADER_AUTHORIZATION, authorizationHeader));
+
+_az_RETURN_IF_FAILED(az_http_request_append_header(
+      &request, AZ_STORAGE_TABLES_HEADER_CONTENT_MD5, contentMd5));
+
+_az_RETURN_IF_FAILED(az_http_request_append_header(
+      &request, AZ_STORAGE_TABLES_HEADER_PREFERE, options->_internal.perferType));
+
+_az_RETURN_IF_FAILED(az_http_request_append_header(
       &request, AZ_STORAGE_TABLES_HEADER_ACCEPT_CHARSET, AZ_STORAGE_TABLES_CHARSET_UTF8));
 
-      _az_RETURN_IF_FAILED(az_http_request_append_header(
-      &request, AZ_STORAGE_TABLES_HEADER_MAX_DATASERVICE_VERSION, AZ_STORAGE_TABLES_DATASERVICE_VERS_3_0_NETFX));
-
-     
-      _az_RETURN_IF_FAILED(az_http_request_append_header(
+_az_RETURN_IF_FAILED(az_http_request_append_header(
       &request, AZ_HTTP_HEADER_CONTENT_TYPE, options->_internal.contentType));
-      
+
+ _az_RETURN_IF_FAILED(az_http_request_append_header(
+      &request, AZ_STORAGE_TABLES_HEADER_DATASERVICE_VERSION, AZ_STORAGE_TABLES_DATASERVICE_VERS_3_0));         
+
+_az_RETURN_IF_FAILED(az_http_request_append_header(
+      &request, AZ_STORAGE_TABLES_HEADER_MAX_DATASERVICE_VERSION, AZ_STORAGE_TABLES_MAX_DATASERVICE_VERS_3_0_NETFX));
+    
   uint8_t content_length[_az_INT64_AS_STR_BUFFER_SIZE] = { 0 };
   az_span content_length_span = AZ_SPAN_FROM_BUFFER(content_length);
+
   az_span remainder;
   _az_RETURN_IF_FAILED(az_span_i64toa(content_length_span, az_span_size(content), &remainder));
   content_length_span
@@ -228,6 +291,16 @@ AZ_NODISCARD az_result az_storage_tables_upload(
   // add Content-Length to request
   _az_RETURN_IF_FAILED(
       az_http_request_append_header(&request, AZ_HTTP_HEADER_CONTENT_LENGTH, content_length_span));
+
+_az_RETURN_IF_FAILED(
+      az_http_request_append_header(&request, AZ_HTTP_HEADER_CONNECTION, AZ_HTTP_CONNECTION_CLOSE));
+
+//_az_RETURN_IF_FAILED(
+//      az_http_request_append_header(&request, AZ_HTTP_HEADER_HOST, ref_client->_internal.endpoint));
+
+
+
+
 
   // add blob type to request
   /*
@@ -242,7 +315,7 @@ AZ_NODISCARD az_result az_storage_tables_upload(
   volatile size_t headerCount = az_http_request_headers_count(&request);
   az_span header_name = { 0 };
   az_span header_value = { 0 };
-  az_http_request_get_header(&request, 1, &header_name, &header_value);
+  az_http_request_get_header(&request, 12, &header_name, &header_value);
 
   return az_http_pipeline_process(&ref_client->_internal.pipeline, &request, ref_response);
 

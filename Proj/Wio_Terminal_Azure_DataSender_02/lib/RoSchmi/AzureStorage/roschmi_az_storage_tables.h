@@ -36,7 +36,7 @@
 /**
  * @brief Client is fixed to a specific version of the Azure Storage Tables service.
  */
-static az_span const AZ_STORAGE_API_VERSION = AZ_SPAN_LITERAL_FROM_STR("2019-02-02");
+static az_span const AZ_STORAGE_API_VERSION = AZ_SPAN_LITERAL_FROM_STR("2015-04-05");
 
 /**
  * @brief Allows customization of the table client.
@@ -172,6 +172,8 @@ AZ_NODISCARD az_result az_storage_tables_upload(
     az_storage_tables_client* ref_client,
     az_span content,
     az_span contentMd5,
+    az_span authorizationHeader,
+    az_span timestamp,
     az_storage_tables_upload_options const* options,
     az_http_response* ref_response);
 

@@ -47,6 +47,6 @@ public:
     void send();
 
     az_http_status_code CreateTable(const char * tableName, ContType pContentType = ContType::contApplicationIatomIxml, AcceptType pAcceptType = AcceptType::acceptApplicationIjson, ResponseType pResponseType = ResponseType::returnContent, bool useSharedKeyLight = false);
-    String CreateTableAuthorizationHeader(char * content, char * canonicalResource, String ptimeStamp, String pHttpVerb, ContType pContentType, char * pMd5Hash, char * pHash, int pHashLength, bool useSharedKeyLite = false);
+    void CreateTableAuthorizationHeader(char * content, char * canonicalResource, const char * ptimeStamp, String pHttpVerb, ContType pContentType, char * pMd5Hash, char pAutorizationHeader[], char * pHash, int pHashLength, bool useSharedKeyLite = false);
 };
 #endif 

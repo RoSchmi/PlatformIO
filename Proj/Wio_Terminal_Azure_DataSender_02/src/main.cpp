@@ -22,7 +22,7 @@
 //#include <platform.h>
 #include <azure/core/az_config_internal.h>
 #include <azure/core/az_context.h>
-#include <azure/storage/az_storage_blobs.h>
+//#include <azure/storage/az_storage_blobs.h>
 
 //#include <curl/curl.h> // libcurl is our HTTP stack
 
@@ -65,8 +65,6 @@
 
 #include <azure/core/az_platform.h>
 #include <azure/core/az_retry_internal.h>
-
-#include <azure/storage/az_storage_blobs.h>
 
 #include <azure/iot/az_iot_hub_client.h>
 
@@ -124,7 +122,7 @@ void setup() {
    
    
   
-   tft.begin();
+  tft.begin();
   tft.setRotation(3);
   tft.fillScreen(TFT_WHITE);
   tft.setFreeFont(&LCD_FONT);
@@ -136,7 +134,19 @@ void setup() {
   Serial.begin(9600);
   Serial.println("\r\nHello, I'm starting ");
 
-  delay(20000);
+  //pinMode(BUTTON_1, INPUT_PULLUP);
+  
+  /*
+  while(digitalRead(BUTTON_1) == HIGH)
+  {
+    delay(100);
+    delay(100);
+    delay(100);
+  }
+  */
+  
+
+  delay(5000);
   lcd_log_line((char *)"Continue");
 
   char buf[42];
@@ -185,6 +195,7 @@ void setup() {
     DateTime now = DateTime((uint16_t) ntp.year(), (uint8_t)ntp.month(), (uint8_t)ntp.day(),
                 (uint8_t)ntp.hours(), (uint8_t)ntp.minutes(), (uint8_t)ntp.seconds());
 
+  
     sysTime.begin(now);
     now = sysTime.getTime();
     
@@ -269,7 +280,7 @@ TableClient table(myCloudStorageAccountPtr, myX509Certificate, httpPtr);
 
 //String tableName = "newtable";
 
-const char * tableName = "AnalogTestValues2020";
+const char * tableName = "AnalogTestValues2021";
 
 az_http_status_code theResult = createTable(myCloudStorageAccountPtr, myX509Certificate, tableName);
 

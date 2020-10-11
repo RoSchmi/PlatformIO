@@ -57,17 +57,18 @@ az_http_client_send_request(az_http_request const* request, az_http_response* re
 
   volatile int32_t theQueryStart = request->_internal.query_start;
   volatile size_t headerCount = az_http_request_headers_count(request);
+  /*
   az_span header_name = { 0 };
   az_span header_value = { 0 };
   az_http_request_get_header(request, 1, &header_name, &header_value);
-  
+  */
 
 
   char requUrlStr [101];
   az_span_to_str(requUrlStr, 101, requUrl);
   String requUrlString = String(requUrlStr);
 
-uint8_t headers_buffer[200] {0};
+uint8_t headers_buffer[300] {0};
   az_span headers_span = AZ_SPAN_FROM_BUFFER(headers_buffer);
   //az_span separator = AZ_SPAN_LITERAL_FROM_STR("**");
 
@@ -117,10 +118,51 @@ volatile size_t headerSize = strlen(theHeader_str);
     //String thePath = "/posts?userId=1";
 
     String theUrl = "prax47.table.core.windows.net";
-    String thePath = "/";
+    String thePath = "/Tables()";
     
-    deviceHttp->begin(theUrl, (uint16_t)443, thePath, _caCertificate);
-    int httpCode = deviceHttp->GET();
+    //deviceHttp->begin(theUrl, (uint16_t)443, thePath, _caCertificate);
+    deviceHttp->begin(theUrl, (uint16_t)80, thePath);
+    //int httpCode = deviceHttp->GET();
+    deviceHttp->setUserAgent("RsWioClient");
+    //deviceHttp->addHeader()
+
+    az_span head_name = { 0 };
+    az_span head_value = { 0 };
+    size_t valueBufferLength = request->_internal.url_length + 40;
+    char name_buffer[30] {0};
+    char value_buffer[valueBufferLength] {0};
+
+    for (int32_t offset = (headerCount - 1); offset >= 0; offset--)
+    {
+      _az_RETURN_IF_FAILED(az_http_request_get_header(request, offset, &head_name, &head_value));
+      
+      az_span_to_str((char *)name_buffer, 30, head_name);
+      az_span_to_str((char *)value_buffer, valueBufferLength, head_value);
+
+      deviceHttp->addHeader(name_buffer, value_buffer, true, true);   
+    }
+    //request->_internal.body
+
+    int32_t bodySize = request->_internal.body._internal.size;
+    
+    
+    //size_t bodyLength = az_span_size(request->_internal.body);
+
+    //az_span body = request->_internal.body;
+
+    //size_t bodyLength = az_span_size(body);
+
+    char theBody[530] {0};
+    
+    az_span_to_str((char *)theBody, bodySize + 1, request->_internal.body);
+
+    volatile size_t thebodiesLength = strlen(theBody);
+    char byte_00 = theBody[0];
+    char byte_528 = theBody[528];
+    char byte_529 = theBody[529];
+
+
+    int httpCode = deviceHttp->POST(theBody);
     delay(110);
     if (httpCode > 0) { //Check for the returning code 
       String payload = deviceHttp->getString();
@@ -128,11 +170,13 @@ volatile size_t headerSize = strlen(theHeader_str);
       //lcd_log_line(itoa((int)httpCode, buf, 10));
       int length = payload.length();
       int indexCtr = 0;
-      int pageWidth = 30;
+      int pageWidth = 50;
       Serial.println(httpCode);
       delay(2000);
+      String partMessage;
       while (indexCtr < length)
       {
+        partMessage = payload.substring(indexCtr, indexCtr + pageWidth);
         indexCtr += pageWidth;
       } 
        Serial.println(payload);
@@ -211,10 +255,10 @@ static AZ_NODISCARD az_result
 dev_az_http_client_build_headers(az_http_request const* request, az_span ref_headers)
 {
   _az_PRECONDITION_NOT_NULL(request);
-
+  
   az_span header_name = { 0 };
   az_span header_value = { 0 };
-  uint8_t header_buffer[70] {0};
+  uint8_t header_buffer[request->_internal.url_length - 20 + 60] {0};
   az_span header_span = AZ_SPAN_FROM_BUFFER(header_buffer);
   az_span separator = AZ_SPAN_LITERAL_FROM_STR(": ");
   
