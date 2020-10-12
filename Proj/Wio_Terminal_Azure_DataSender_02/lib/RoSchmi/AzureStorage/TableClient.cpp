@@ -32,14 +32,24 @@ static SysTime sysTime;
 // forward declarations
 void GetDateHeader(DateTime, char * stamp, char * x_ms_time);
 String getContentTypeString(ContType pContentType);
+
+az_span  getContentType_az_span(ContType pContentType);
+
 String getAcceptTypeString(AcceptType pAcceptType);
 String getResponseTypeString(ResponseType pResponseType);
 int base64_decode(const char * input, char * output);
 int32_t dow(int32_t year, int32_t month, int32_t day);
 
-void TableClient::CreateTableAuthorizationHeader(char * content, char * canonicalResource, const char * ptimeStamp, String pHttpVerb, ContType pContentType, char * pMD5HashHex, char * pAutorizationHeader, char * pHash, int pHashLen, bool useSharedKeyLite)
+void TableClient::CreateTableAuthorizationHeader(char * content, char * canonicalResource, const char * ptimeStamp, String pHttpVerb, az_span pContentType, char * pMD5HashHex, char * pAutorizationHeader, char * pHash, int pHashLen, bool useSharedKeyLite)
 {
-    String contentType = getContentTypeString(pContentType);
+  
+
+    char contentTypeString[25] {0};
+
+    az_span_to_str(contentTypeString, (az_span_size(pContentType) + 1), pContentType);
+
+
+    //String contentType = getContentTypeString(pContentType);
                                                                                   
     if (!useSharedKeyLite)
     {               
@@ -64,7 +74,8 @@ void TableClient::CreateTableAuthorizationHeader(char * content, char * canonica
     }
     else
     {
-        sprintf(toSign, "%s\n%s\n%s\n%s\n%s", (char *)pHttpVerb.c_str(), pMD5HashHex , (char *)contentType.c_str(), (char *)ptimeStamp, canonicalResource);                        
+        //sprintf(toSign, "%s\n%s\n%s\n%s\n%s", (char *)pHttpVerb.c_str(), pMD5HashHex , (char *)contentType.c_str(), (char *)ptimeStamp, canonicalResource);
+        sprintf(toSign, "%s\n%s\n%s\n%s\n%s", (char *)pHttpVerb.c_str(), pMD5HashHex , (char *)contentTypeString, (char *)ptimeStamp, canonicalResource);                       
     }
             
     // Produce Authentication Header
@@ -152,7 +163,7 @@ void TableClient::CreateTableAuthorizationHeader(char * content, char * canonica
         //sprintf(pAutorizationHeader, "%s %s:%s", (char *)"SharedKeyLite", (char *)_accountPtr->AccountName.c_str(), hmacResultBase64);                       
         sprintf(retBuf, "%s %s:%s", (char *)"SharedKeyLite", (char *)_accountPtr->AccountName.c_str(), hmacResultBase64);               
         char * ptr = &pAutorizationHeader[0];
-        for (int i = 0; i < strlen(retBuf); i++) {
+        for (size_t i = 0; i < strlen(retBuf); i++) {
             ptr[i] = retBuf[i];
         }
         ptr[strlen(retBuf)] = '\0';
@@ -237,27 +248,22 @@ void TableClient::send()
 
  
 az_http_status_code TableClient::CreateTable(const char * tableName, ContType pContentType, AcceptType pAcceptType, ResponseType pResponseType, bool useSharedKeyLite)
-        {
-            //OperationResultsClear();
+{
+  //OperationResultsClear();
             
-            char x_ms_timestamp[35] {0};
-            char timestamp[22] {0};
+  char x_ms_timestamp[35] {0};
+  char timestamp[22] {0};
 
-            GetDateHeader(sysTime.getTime(), timestamp, x_ms_timestamp);
+  GetDateHeader(sysTime.getTime(), timestamp, x_ms_timestamp);
 
-            String timestampUTC = timestamp;
-            timestampUTC += ".0000000Z";
-            
-            
+  String timestampUTC = timestamp;
+  timestampUTC += ".0000000Z";
 
-           // strftime(x_ms_time, strlen(x_ms_time), )
+  az_span  contentTypeAzSpan = getContentType_az_span(pContentType);                
+  //String contentType = getContentTypeString(pContentType);
 
-            //String returnValue = "2020-09-30T23:31:04";
-                
-           
-            String contentType = getContentTypeString(pContentType);
-            String acceptType = getAcceptTypeString(pAcceptType);
-            String responseType = getResponseTypeString(pResponseType);
+  String acceptType = getAcceptTypeString(pAcceptType);
+  String responseType = getResponseTypeString(pResponseType);
 
             const char * li1 = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>";
             const char * li2 = "<entry xmlns:d=\"http://schemas.microsoft.com/ado/2007/08/dataservices\"  ";
@@ -302,13 +308,6 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
             char accountName_and_Tables[_accountPtr->AccountName.length() + 15];
             sprintf(accountName_and_Tables, "/%s/%s", (char *)_accountPtr->AccountName.c_str(), (char *)"Tables()");
             
-
-
-
-
-            //char hushBuffer[1000];
-            //int hashBufferLength = 1000;
-
             // RoSchmi todo -> eliminate
             char hushBuffer[5];
             int hashBufferLength = 5;
@@ -318,7 +317,7 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
             //char authorizationHeaderBuffer[strlen(_accountPtr->AccountName.c_str()) + 60] {0};
             char authorizationHeaderBuffer[100] {0};
 
-            CreateTableAuthorizationHeader((char *)addBuffer, accountName_and_Tables, (const char *)x_ms_timestamp, HttpVerb, pContentType, md5Buffer, authorizationHeaderBuffer, hushBuffer, hashBufferLength, useSharedKeyLite = false);
+            CreateTableAuthorizationHeader((char *)addBuffer, accountName_and_Tables, (const char *)x_ms_timestamp, HttpVerb, contentTypeAzSpan, md5Buffer, authorizationHeaderBuffer, hushBuffer, hashBufferLength, useSharedKeyLite = false);
 
             String authorizationHeader = String((char *)authorizationHeaderBuffer);
             String urlPath = tableName;
@@ -373,7 +372,8 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
   //static az_span content_to_upload = AZ_SPAN_LITERAL_FROM_STR("\r\nSome test content");
   
   az_storage_tables_upload_options uploadOptions = az_storage_tables_upload_options_default();
-  uploadOptions._internal.contentType = az_span_create_from_str((char *)contentType.c_str());
+  //uploadOptions._internal.contentType = az_span_create_from_str((char *)contentType.c_str());
+  uploadOptions._internal.contentType = contentTypeAzSpan;
   uploadOptions._internal.perferType = az_span_create_from_str((char *)responseType.c_str());
 
 // uint8_t request_buffer[1024] = { 0 };
@@ -457,20 +457,7 @@ az_result const blob_upload_result
         
         void GetDateHeader(DateTime time, char * stamp, char * x_ms_time)
         {
-            //char daysOfTheWeek[7][12] = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
- 
-            //char daysOfTheWeek[7][4] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
-
-            
-
-          //DateTime now = sysTime.getTime();
-
-          //String dayOfWeek = daysOfTheWeek[now.dayOfTheWeek()];
-          
-          //char buf[22];
-          
-          //sprintf(buf,"%04i-%02i-%02iT%02i:%02i:%02i", time.year() - 30, time.month(), time.day(), time.hour(), time.minute(), time.second());
-int32_t theYear =  (int32_t)time.year();   
+           
 
 int32_t dayOfWeek = dow((int32_t)time.year() -30, (int32_t)time.month(), (int32_t)time.day());
 
@@ -487,32 +474,18 @@ int32_t dayOfWeek = dow((int32_t)time.year() -30, (int32_t)time.month(), (int32_
 
         int monthSave = (int)time.month();
 
-        
-          /*
-          timeinfo.
-          timeinfo.tm_mon = time.month();
-          timeinfo.tm_mday = time.day();
-          timeinfo.tm_year = time.year() -30;
-          timeinfo.tm_hour = time.hour();
-          timeinfo.tm_min = time.minute();
-          timeinfo.tm_sec = time.second();
-          */
-         
-          //char buffer[35];
-
-
           // RoSchmi: There seems to be a bug in the strftime function selecting the month name
           // January is taken for 0, it should be taken for 1
           // Here I use a bugfix to correct the association 
           
         
-        // Check if 1 is associated with Feb
+        // Check if 1 is associated with Feb (instead of Jan)
         // If true -> decrement by 1
-        //timeinfo.
+       
         timeinfo.tm_mon = 1;
         strftime((char *)x_ms_time, 35, "%b", &timeinfo);
         
-int result = strcmp(x_ms_time, (char *)"Feb");
+
 
         timeinfo.tm_mon =  (strcmp(x_ms_time, (char *)"Feb") == 0) ? (monthSave - 1) : monthSave;
 
@@ -521,13 +494,19 @@ int result = strcmp(x_ms_time, (char *)"Feb");
           strftime((char *)x_ms_time, 35, "%a, %d %b %Y %H:%M:%S GMT", &timeinfo);
           strftime((char *)stamp, 22, "%Y-%m-%dT%H:%M:%S", &timeinfo);
 
-          //String returnValue = buf;
-          //String returnValue = "2020-09-30T23:31:04";
+         
+        }
 
-          //String returnValue =  now.timestamp(DateTime::TIMESTAMP_FULL);           
-          
-          //return returnValue;
-            //return DateTime.UtcNow.ToString("R");
+        az_span getContentType_az_span(ContType pContentType)
+        {           
+            if (pContentType == contApplicationIatomIxml)
+            { 
+              return AZ_SPAN_LITERAL_FROM_STR("application/atom+xml");          
+            }
+            else
+            { 
+              return AZ_SPAN_LITERAL_FROM_STR("application/json"); 
+            }
         }
 
         String getContentTypeString(ContType pContentType)

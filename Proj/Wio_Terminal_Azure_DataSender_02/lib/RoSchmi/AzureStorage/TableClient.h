@@ -4,7 +4,7 @@
 #include <HTTPClient.h>
 #include <azure/core/az_http.h>
 #include <Time/SysTime.h>
-//#include <Time/RoSchmi_time_helpers.h>
+
 
 #include "mbedtls/md.h"
 #include "mbedtls/md5.h"
@@ -48,7 +48,8 @@ public:
     void send();
 
     az_http_status_code CreateTable(const char * tableName, ContType pContentType = ContType::contApplicationIatomIxml, AcceptType pAcceptType = AcceptType::acceptApplicationIjson, ResponseType pResponseType = ResponseType::returnContent, bool useSharedKeyLight = false);
-    void CreateTableAuthorizationHeader(char * content, char * canonicalResource, const char * ptimeStamp, String pHttpVerb, ContType pContentType, char * pMd5Hash, char pAutorizationHeader[], char * pHash, int pHashLength, bool useSharedKeyLite = false);
+    //void CreateTableAuthorizationHeader(char * content, char * canonicalResource, const char * ptimeStamp, String pHttpVerb, ContType pContentType, char * pMd5Hash, char pAutorizationHeader[], char * pHash, int pHashLength, bool useSharedKeyLite = false);
+    void CreateTableAuthorizationHeader(char * content, char * canonicalResource, const char * ptimeStamp, String pHttpVerb, az_span pConentType, char * pMd5Hash, char pAutorizationHeader[], char * pHash, int pHashLength, bool useSharedKeyLite = false);
     int32_t dow(int32_t year, int32_t month, int32_t day);
 };
 #endif 
