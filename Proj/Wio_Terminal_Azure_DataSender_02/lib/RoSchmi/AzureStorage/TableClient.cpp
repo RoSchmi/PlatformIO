@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <Encryption/RoSchmi_encryption_helpers.h>
 #include <AzureStorage/roschmi_az_storage_tables.h>
+//#include <Time/RoSchmi_time_helpers.h>
 
 
 String VersionHeader = "2015-04-05";
@@ -29,11 +30,12 @@ static SysTime sysTime;
 
 
 // forward declarations
-String GetDateHeader(DateTime, char * stamp, char * x_ms_time);
+void GetDateHeader(DateTime, char * stamp, char * x_ms_time);
 String getContentTypeString(ContType pContentType);
 String getAcceptTypeString(AcceptType pAcceptType);
 String getResponseTypeString(ResponseType pResponseType);
 int base64_decode(const char * input, char * output);
+int32_t dow(int32_t year, int32_t month, int32_t day);
 
 void TableClient::CreateTableAuthorizationHeader(char * content, char * canonicalResource, const char * ptimeStamp, String pHttpVerb, ContType pContentType, char * pMD5HashHex, char * pAutorizationHeader, char * pHash, int pHashLen, bool useSharedKeyLite)
 {
@@ -238,11 +240,13 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
         {
             //OperationResultsClear();
             
-            char x_ms_timestamp[50] {0};
-            char timestamp[50] {0};
+            char x_ms_timestamp[35] {0};
+            char timestamp[22] {0};
 
-            String timestamp_old = GetDateHeader(sysTime.getTime(), timestamp, x_ms_timestamp);
-            String timestampUTC = timestamp_old + ".0000000Z";
+            GetDateHeader(sysTime.getTime(), timestamp, x_ms_timestamp);
+
+            String timestampUTC = timestamp;
+            timestampUTC += ".0000000Z";
             
             
 
@@ -451,11 +455,11 @@ az_result const blob_upload_result
         }
         
         
-        String GetDateHeader(DateTime time, char * stamp, char * x_ms_time)
+        void GetDateHeader(DateTime time, char * stamp, char * x_ms_time)
         {
             //char daysOfTheWeek[7][12] = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
  
-            char daysOfTheWeek[7][4] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+            //char daysOfTheWeek[7][4] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
 
             
 
@@ -463,13 +467,12 @@ az_result const blob_upload_result
 
           //String dayOfWeek = daysOfTheWeek[now.dayOfTheWeek()];
           
-          char buf[22];
+          //char buf[22];
           
-          sprintf(buf,"%04i-%02i-%02iT%02i:%02i:%02i", time.year() - 30, time.month(), time.day(), time.hour(), time.minute(), time.second());
-          
-          
-          //  time_t
-          
+          //sprintf(buf,"%04i-%02i-%02iT%02i:%02i:%02i", time.year() - 30, time.month(), time.day(), time.hour(), time.minute(), time.second());
+int32_t theYear =  (int32_t)time.year();   
+
+int32_t dayOfWeek = dow((int32_t)time.year() -30, (int32_t)time.month(), (int32_t)time.day());
 
           struct tm timeinfo {
                         (int)time.second(),
@@ -478,9 +481,11 @@ az_result const blob_upload_result
                         (int)time.day(),
                         (int)time.month(),
                         (int)(time.year() - 1900 - 30),                       
-                        0,
+                        (int)dayOfWeek,
                         0,                               
                         0};
+
+        int monthSave = (int)time.month();
 
         
           /*
@@ -497,19 +502,31 @@ az_result const blob_upload_result
 
 
           // RoSchmi: There seems to be a bug in the strftime function selecting the month name
-          // for January is taken for 0, it should be taken for 1
-          struct tm timeinfoBugFix = timeinfo;
-          timeinfoBugFix.tm_mon = timeinfo.tm_mon -1;
+          // January is taken for 0, it should be taken for 1
+          // Here I use a bugfix to correct the association 
           
-          strftime((char *)x_ms_time, 35, "%a, %d %b %Y %H:%M:%S GMT", &timeinfoBugFix);
-          strftime((char *)stamp, 35, "%Y-%m-%dT%H:%M:%S", &timeinfoBugFix);
+        
+        // Check if 1 is associated with Feb
+        // If true -> decrement by 1
+        //timeinfo.
+        timeinfo.tm_mon = 1;
+        strftime((char *)x_ms_time, 35, "%b", &timeinfo);
+        
+int result = strcmp(x_ms_time, (char *)"Feb");
 
-          String returnValue = buf;
+        timeinfo.tm_mon =  (strcmp(x_ms_time, (char *)"Feb") == 0) ? (monthSave - 1) : monthSave;
+
+        
+          
+          strftime((char *)x_ms_time, 35, "%a, %d %b %Y %H:%M:%S GMT", &timeinfo);
+          strftime((char *)stamp, 22, "%Y-%m-%dT%H:%M:%S", &timeinfo);
+
+          //String returnValue = buf;
           //String returnValue = "2020-09-30T23:31:04";
 
           //String returnValue =  now.timestamp(DateTime::TIMESTAMP_FULL);           
           
-          return returnValue;
+          //return returnValue;
             //return DateTime.UtcNow.ToString("R");
         }
 
@@ -536,6 +553,38 @@ az_result const blob_upload_result
             else
             { return "return-no-content"; }
         }
+
+        /* Returns the number of days to the start of the specified year, taking leap
+ * years into account, but not the shift from the Julian calendar to the
+ * Gregorian calendar. Instead, it is as though the Gregorian calendar is
+ * extrapolated back in time to a hypothetical "year zero".
+ */
+int leap (int year)
+{
+  return year*365 + (year/4) - (year/100) + (year/400);
+}
+
+/* Returns a number representing the number of days since March 1 in the
+ * hypothetical year 0, not counting the change from the Julian calendar
+ * to the Gregorian calendar that occured in the 16th century. This
+ * algorithm is loosely based on a function known as "Zeller's Congruence".
+ * This number MOD 7 gives the day of week, where 0 = Monday and 6 = Sunday.
+ */
+int32_t zeller (int32_t year, int32_t month, int32_t day)
+{
+  year += ((month+9)/12) - 1;
+  month = (month+9) % 12;
+  return leap (year) + month*30 + ((6*month+5)/10) + day + 1;
+}
+
+/* Returns the day of week (1=Monday, 7=Sunday) for a given date.
+ */
+int32_t dow (int32_t year, int32_t month, int32_t day)
+{
+  return (zeller (year, month, day) % 7) + 1;
+}
+
+
         /*
         byte[] GetBodyBytesAndLength(string body, out int contentLength)
         {

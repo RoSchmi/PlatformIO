@@ -1,4 +1,4 @@
-
+#include <Arduino.h>
 #include "mbedtls/md.h"
 #include "mbedtls/md5.h"
 #include "mbedtls/base64.h"

@@ -1,5 +1,7 @@
 #include <Arduino.h>
 #include <DateTime.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #ifndef _ROSCHMI_TIME_HELPERS_H_
 #define _ROSCHMI_TIME_HELPERS_H_
@@ -8,6 +10,8 @@
 extern "C"
 {
 #endif // __cplusplus
+
+
 
 char daysOfTheWeek[7][4] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
 //char monthsOfTheYear[12][5] = {"Jan", "Feb"}
