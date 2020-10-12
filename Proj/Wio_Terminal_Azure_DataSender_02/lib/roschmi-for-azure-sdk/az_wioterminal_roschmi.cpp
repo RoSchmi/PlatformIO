@@ -120,8 +120,8 @@ volatile size_t headerSize = strlen(theHeader_str);
     String theUrl = "prax47.table.core.windows.net";
     String thePath = "/Tables()";
     
-    //deviceHttp->begin(theUrl, (uint16_t)443, thePath, _caCertificate);
-    deviceHttp->begin(theUrl, (uint16_t)80, thePath);
+    deviceHttp->begin(theUrl, (uint16_t)443, thePath, _caCertificate);
+    //deviceHttp->begin(theUrl, (uint16_t)80, thePath);
     //int httpCode = deviceHttp->GET();
     deviceHttp->setUserAgent("RsWioClient");
     //deviceHttp->addHeader()

@@ -108,6 +108,7 @@ typedef struct
   {
     /// Currently, this is unused, but needed as a placeholder since we can't have an empty struct.
     bool unused;
+    az_span acceptType;
     az_span contentType;
     az_span perferType;
 
@@ -139,6 +140,7 @@ az_storage_tables_upload_options_default()
   return (az_storage_tables_upload_options){ .context = &az_context_application,
                                                  ._internal = { 
                                                    .unused = false,
+                                                   .acceptType = AZ_SPAN_LITERAL_FROM_STR("application/json"),
                                                    .contentType = AZ_SPAN_LITERAL_FROM_STR("application/atom+xml"),
                                                    .perferType = AZ_SPAN_LITERAL_FROM_STR("application/json"),
                                                   } };

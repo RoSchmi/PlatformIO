@@ -8,10 +8,8 @@
 #include <stdlib.h>
 #include <Encryption/RoSchmi_encryption_helpers.h>
 #include <AzureStorage/roschmi_az_storage_tables.h>
-//#include <Time/RoSchmi_time_helpers.h>
 
-
-String VersionHeader = "2015-04-05";
+//String VersionHeader = "2015-04-05";
 
 CloudStorageAccount  * _accountPtr;
 HTTPClient * _httpPtr;
@@ -31,26 +29,20 @@ static SysTime sysTime;
 
 // forward declarations
 void GetDateHeader(DateTime, char * stamp, char * x_ms_time);
-String getContentTypeString(ContType pContentType);
 
 az_span  getContentType_az_span(ContType pContentType);
+az_span  getResponseType_az_span(ResponseType pResponseType);
+az_span  getAcceptType_az_span(AcceptType pAcceptType);
 
-String getAcceptTypeString(AcceptType pAcceptType);
-String getResponseTypeString(ResponseType pResponseType);
 int base64_decode(const char * input, char * output);
 int32_t dow(int32_t year, int32_t month, int32_t day);
 
 void TableClient::CreateTableAuthorizationHeader(char * content, char * canonicalResource, const char * ptimeStamp, String pHttpVerb, az_span pContentType, char * pMD5HashHex, char * pAutorizationHeader, char * pHash, int pHashLen, bool useSharedKeyLite)
 {
-  
-
     char contentTypeString[25] {0};
 
-    az_span_to_str(contentTypeString, (az_span_size(pContentType) + 1), pContentType);
-
-
-    //String contentType = getContentTypeString(pContentType);
-                                                                                  
+    az_span_to_str(contentTypeString, (az_span_size(pContentType) + 1), pContentType);                                                                              
+    
     if (!useSharedKeyLite)
     {               
         // How to produce Md5 hash:
@@ -259,11 +251,11 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
   String timestampUTC = timestamp;
   timestampUTC += ".0000000Z";
 
-  az_span  contentTypeAzSpan = getContentType_az_span(pContentType);                
-  //String contentType = getContentTypeString(pContentType);
+  az_span  contentTypeAzSpan = getContentType_az_span(pContentType);
 
-  String acceptType = getAcceptTypeString(pAcceptType);
-  String responseType = getResponseTypeString(pResponseType);
+  az_span responseTypeAzSpan = getResponseType_az_span(pResponseType);
+ 
+  az_span acceptTypeAzSpan = getAcceptType_az_span(pAcceptType);
 
             const char * li1 = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>";
             const char * li2 = "<entry xmlns:d=\"http://schemas.microsoft.com/ado/2007/08/dataservices\"  ";
@@ -332,17 +324,13 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
             sprintf(canonHeadersBuffer, "Date:%s\nx-ms-date:%s\nx-ms-version:%s", (char *)timestamp.c_str(), (char *)timestamp.c_str(), (char *)VersionHeader.c_str());
             String canonicalizedHeaders = canonHeadersBuffer;
             */
-
-            //string TableEndPoint = _account.UriEndpoints["Table"].ToString();
+          
             String TableEndPoint = _accountPtr->UriEndPointTable;
             String Host = _accountPtr->HostNameTable;
             
             az_storage_tables_client tabClient;        
             az_storage_tables_client_options options = az_storage_tables_client_options_default();
-            //options._internal.telemetry_options.
-            
-           
-            
+                        
              if (az_storage_tables_client_init(
           &tabClient, az_span_create_from_str((char *)Host.c_str()), AZ_CREDENTIAL_ANONYMOUS, &options)
       != AZ_OK)
@@ -372,9 +360,10 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
   //static az_span content_to_upload = AZ_SPAN_LITERAL_FROM_STR("\r\nSome test content");
   
   az_storage_tables_upload_options uploadOptions = az_storage_tables_upload_options_default();
-  //uploadOptions._internal.contentType = az_span_create_from_str((char *)contentType.c_str());
+  
+  uploadOptions._internal.acceptType = acceptTypeAzSpan;
   uploadOptions._internal.contentType = contentTypeAzSpan;
-  uploadOptions._internal.perferType = az_span_create_from_str((char *)responseType.c_str());
+  uploadOptions._internal.perferType = responseTypeAzSpan;
 
 // uint8_t request_buffer[1024] = { 0 };
 // az_http_request_init
@@ -485,16 +474,11 @@ int32_t dayOfWeek = dow((int32_t)time.year() -30, (int32_t)time.month(), (int32_
         timeinfo.tm_mon = 1;
         strftime((char *)x_ms_time, 35, "%b", &timeinfo);
         
-
-
         timeinfo.tm_mon =  (strcmp(x_ms_time, (char *)"Feb") == 0) ? (monthSave - 1) : monthSave;
-
-        
-          
+                  
           strftime((char *)x_ms_time, 35, "%a, %d %b %Y %H:%M:%S GMT", &timeinfo);
           strftime((char *)stamp, 22, "%Y-%m-%dT%H:%M:%S", &timeinfo);
-
-         
+       
         }
 
         az_span getContentType_az_span(ContType pContentType)
@@ -509,28 +493,20 @@ int32_t dayOfWeek = dow((int32_t)time.year() -30, (int32_t)time.month(), (int32_
             }
         }
 
-        String getContentTypeString(ContType pContentType)
+        az_span getAcceptType_az_span(AcceptType pAcceptType)
         {
-            if (pContentType == contApplicationIatomIxml)
-            { return "application/atom+xml"; }
+          if (pAcceptType == acceptApplicationIatomIxml)
+            { return AZ_SPAN_LITERAL_FROM_STR("application/atom+xml"); }
             else
-            { return "application/json"; }
+            { return AZ_SPAN_LITERAL_FROM_STR("application/json"); }
         }
-
-        String getAcceptTypeString(AcceptType pAcceptType)
+        
+        az_span getResponseType_az_span(ResponseType pResponseType)
         {
-            if (pAcceptType == acceptApplicationIatomIxml)
-            { return "application/atom+xml"; }
+          if (pResponseType == returnContent)
+            { return AZ_SPAN_LITERAL_FROM_STR("return-content"); }
             else
-            { return "application/json"; }
-        }
-
-        String getResponseTypeString(ResponseType pResponseType)
-        {
-            if (pResponseType == returnContent)
-            { return "return-content"; }
-            else
-            { return "return-no-content"; }
+            { return AZ_SPAN_LITERAL_FROM_STR("return-no-content"); }
         }
 
         /* Returns the number of days to the start of the specified year, taking leap

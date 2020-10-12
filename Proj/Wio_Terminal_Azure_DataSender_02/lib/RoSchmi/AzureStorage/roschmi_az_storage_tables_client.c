@@ -48,10 +48,14 @@ enum
 
 //static az_span const AZ_STORAGE_TABLES_USER_AGENT_NAME = AZ_SPAN_LITERAL_FROM_STR("RsWioClient"); 
 
-static az_span const AZ_STORAGE_TABLES_HEADER_ACCEPT
-    = AZ_SPAN_LITERAL_FROM_STR("Accept");
+//static az_span const String acceptType = getAcceptTypeString(pAcceptType)
+//    = AZ_SPAN_LITERAL_FROM_STR("Accept");
 
-static az_span const AZ_STORAGE_TABLES_ACCEPT_TYPE = AZ_SPAN_LITERAL_FROM_STR("application/json");
+    
+  static az_span const AZ_STORAGE_TABLES_HEADER_ACCEPT_TYPE
+    = AZ_SPAN_LITERAL_FROM_STR("Accept");  
+
+//static az_span const AZ_STORAGE_TABLES_ACCEPT_TYPE = AZ_SPAN_LITERAL_FROM_STR("application/json");
 
    
 static az_span const AZ_STORAGE_TABLES_HEADER_XMS_DATE
@@ -186,8 +190,7 @@ AZ_NODISCARD az_result az_storage_tables_client_init(
 
   // Copy url to client buffer so customer can re-use buffer on his/her side
   int32_t const uri_size = az_span_size(endpoint);
-  //RoSchmi
-  //volatile int32_t uri_sizeCpoy = uri_size;
+  
   
   _az_RETURN_IF_NOT_ENOUGH_SIZE(out_client->_internal.endpoint, uri_size);
   az_span_copy(out_client->_internal.endpoint, endpoint);
@@ -247,17 +250,16 @@ AZ_NODISCARD az_result az_storage_tables_upload(
       request_headers_span,
       content));
     
-    //_az_RETURN_IF_FAILED(az_http_request_append_header(
-    //  &request, AZ_STORAGE_TABLES_HEADER_USER_AGENT, AZ_STORAGE_TABLES_USER_AGENT_NAME));
+    
 
-      _az_RETURN_IF_FAILED(az_http_request_append_header(
-      &request, AZ_STORAGE_TABLES_HEADER_ACCEPT, AZ_STORAGE_TABLES_ACCEPT_TYPE));
+     // _az_RETURN_IF_FAILED(az_http_request_append_header(
+     // &request, AZ_STORAGE_TABLES_HEADER_ACCEPT, AZ_STORAGE_TABLES_ACCEPT_TYPE));
+
+       _az_RETURN_IF_FAILED(az_http_request_append_header(
+      &request, AZ_STORAGE_TABLES_HEADER_ACCEPT_TYPE, options->_internal.acceptType));
 
       _az_RETURN_IF_FAILED(az_http_request_append_header(
       &request, AZ_STORAGE_TABLES_HEADER_XMS_DATE, timestamp));
-
-     // _az_RETURN_IF_FAILED(az_http_request_append_header(
-     // &request, AZ_STORAGE_TABLES_HEADER_API_VERSION, AZ_STORAGE_API_VERSION));
 
       _az_RETURN_IF_FAILED(az_http_request_append_header(
       &request, AZ_STORAGE_TABLES_HEADER_AUTHORIZATION, authorizationHeader));
