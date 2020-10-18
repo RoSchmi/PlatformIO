@@ -161,15 +161,6 @@ az_storage_tables_upload_options_default()
  * @retval other Failure.
  */
 
-/*
-AZ_NODISCARD az_result az_storage_tables_upload(
-    az_storage_tables_client* ref_client,
-    az_span content,
-    az_span contentMd5,
-    az_storage_tables_upload_options const* options,
-    az_http_request* ref_request,
-    az_http_response* ref_response);
-*/
 AZ_NODISCARD az_result az_storage_tables_upload(
     az_storage_tables_client* ref_client,
     az_span content,

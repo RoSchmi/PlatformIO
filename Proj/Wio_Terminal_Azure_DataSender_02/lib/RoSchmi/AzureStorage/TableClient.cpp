@@ -9,7 +9,13 @@
 #include <Encryption/RoSchmi_encryption_helpers.h>
 #include <AzureStorage/roschmi_az_storage_tables.h>
 
-//String VersionHeader = "2015-04-05";
+#include <AzureStorage/TableEntityProperty.h>
+#include <AzureStorage/TableEntity.h>
+
+#include <azure/core/az_span.h>
+
+
+
 
 CloudStorageAccount  * _accountPtr;
 HTTPClient * _httpPtr;
@@ -36,6 +42,7 @@ az_span  getAcceptType_az_span(AcceptType pAcceptType);
 
 int base64_decode(const char * input, char * output);
 int32_t dow(int32_t year, int32_t month, int32_t day);
+void GetTableXml(EntityProperty EntityProperties[], size_t propertyCount, size_t maxPropStrLength, az_span outSpan, size_t *outSpanLength);
 
 void TableClient::CreateTableAuthorizationHeader(char * content, char * canonicalResource, const char * ptimeStamp, String pHttpVerb, az_span pContentType, char * pMD5HashHex, char * pAutorizationHeader, char * pHash, int pHashLen, bool useSharedKeyLite)
 {
@@ -204,6 +211,8 @@ TableClient::~TableClient()
 
 void TableClient::send()
 {
+
+   
     /*
     String theUrl = "jsonplaceholder.typicode.com";
     String thePath = "/posts?userId=1";
@@ -237,8 +246,6 @@ void TableClient::send()
     */
 }
 
-
- 
 az_http_status_code TableClient::CreateTable(const char * tableName, ContType pContentType, AcceptType pAcceptType, ResponseType pResponseType, bool useSharedKeyLite)
 {
   //OperationResultsClear();
@@ -251,68 +258,53 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
   String timestampUTC = timestamp;
   timestampUTC += ".0000000Z";
 
-  az_span  contentTypeAzSpan = getContentType_az_span(pContentType);
-
+  az_span contentTypeAzSpan = getContentType_az_span(pContentType);
   az_span responseTypeAzSpan = getResponseType_az_span(pResponseType);
- 
   az_span acceptTypeAzSpan = getAcceptType_az_span(pAcceptType);
 
-            const char * li1 = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>";
-            const char * li2 = "<entry xmlns:d=\"http://schemas.microsoft.com/ado/2007/08/dataservices\"  ";
-            const char * li3 = "xmlns:m=\"http://schemas.microsoft.com/ado/2007/08/dataservices/metadata\" ";
-            const char * li4 = "xmlns=\"http://www.w3.org/2005/Atom\"> <id>http://";          
-                  char * li5 = (char *)_accountPtr->AccountName.c_str();
-            const char * li6 = ".table.core.windows.net/Tables('";
-                  char * li7 = (char *)tableName;
-            const char * li8 = "')</id><title /><updated>";
-                  char * li9 = (char *)timestampUTC.c_str();
-            const char * li10 = "</updated><author><name/></author> ";
-            const char * li11 = "<content type=\"application/xml\"><m:properties><d:TableName>";
-                  char * li12 = (char *)tableName;
-            const char * li13 = "</d:TableName></m:properties></content></entry>";
-
-            
-            char addBuffer[600];
-            sprintf(addBuffer, "%s%s%s%s%s%s%s%s%s%s%s%s%s", li1, li2, li3, li4,li5, li6, li7, li8, li9, li10,li11, li12, li13);
-            volatile size_t theLength = strlen(addBuffer);
-
-            az_span content_to_upload = az_span_create_from_str(addBuffer);
-
-           // az_span contentToSend = az_span_create_from_str(addBuffer);
-           // String content = addBuffer;
+  
 
 
-            //String content2 = content.substring(120, 240);
-            //String content3 = content.substring(230, 350);
-            //String content4 = content.substring(340, 460);
-            //String content5 = content.substring(450, 570);
-            //delete[] addBuffer;
-            volatile int dummy2 = 1;
+  String HttpVerb = "POST";
 
-            String HttpVerb = "POST";
-            String ContentMD5 = "";
-            //byte hashContentMD5[] = null;
-            //int contentLength = 0;
+    const char * li1 = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>";
+    const char * li2 = "<entry xmlns:d=\"http://schemas.microsoft.com/ado/2007/08/dataservices\"  ";
+    const char * li3 = "xmlns:m=\"http://schemas.microsoft.com/ado/2007/08/dataservices/metadata\" ";
+    const char * li4 = "xmlns=\"http://www.w3.org/2005/Atom\"> <id>http://";          
+          char * li5 = (char *)_accountPtr->AccountName.c_str();
+    const char * li6 = ".table.core.windows.net/Tables('";
+          char * li7 = (char *)tableName;
+    const char * li8 = "')</id><title /><updated>";
+    char * li9 = (char *)timestampUTC.c_str();
+    const char * li10 = "</updated><author><name/></author> ";
+    const char * li11 = "<content type=\"application/xml\"><m:properties><d:TableName>";
+          char * li12 = (char *)tableName;
+    const char * li13 = "</d:TableName></m:properties></content></entry>";
            
+  char addBuffer[600];
+  sprintf(addBuffer, "%s%s%s%s%s%s%s%s%s%s%s%s%s", li1, li2, li3, li4,li5, li6, li7, li8, li9, li10,li11, li12, li13);
+  volatile size_t theLength = strlen(addBuffer);
+
+  az_span content_to_upload = az_span_create_from_str(addBuffer);
+
+
+
+  char accountName_and_Tables[_accountPtr->AccountName.length() + 15];
+  sprintf(accountName_and_Tables, "/%s/%s", (char *)_accountPtr->AccountName.c_str(), (char *)"Tables()");
             
-            // byte[] payload = GetBodyBytesAndLength(content, out contentLength);
-            
-            char accountName_and_Tables[_accountPtr->AccountName.length() + 15];
-            sprintf(accountName_and_Tables, "/%s/%s", (char *)_accountPtr->AccountName.c_str(), (char *)"Tables()");
-            
-            // RoSchmi todo -> eliminate
-            char hushBuffer[5];
-            int hashBufferLength = 5;
+  // RoSchmi todo -> eliminate
+  char hushBuffer[5];
+  int hashBufferLength = 5;
 
-            char md5Buffer[32 +1] {0};
+  char md5Buffer[32 +1] {0};
 
-            //char authorizationHeaderBuffer[strlen(_accountPtr->AccountName.c_str()) + 60] {0};
-            char authorizationHeaderBuffer[100] {0};
+  //char authorizationHeaderBuffer[strlen(_accountPtr->AccountName.c_str()) + 60] {0};
+  char authorizationHeaderBuffer[100] {0};
 
-            CreateTableAuthorizationHeader((char *)addBuffer, accountName_and_Tables, (const char *)x_ms_timestamp, HttpVerb, contentTypeAzSpan, md5Buffer, authorizationHeaderBuffer, hushBuffer, hashBufferLength, useSharedKeyLite = false);
+  CreateTableAuthorizationHeader((char *)addBuffer, accountName_and_Tables, (const char *)x_ms_timestamp, HttpVerb, contentTypeAzSpan, md5Buffer, authorizationHeaderBuffer, hushBuffer, hashBufferLength, useSharedKeyLite = false);
 
-            String authorizationHeader = String((char *)authorizationHeaderBuffer);
-            String urlPath = tableName;
+  String authorizationHeader = String((char *)authorizationHeaderBuffer);
+  String urlPath = tableName;
 
             /*         
             char canonResourceBuffer[_accountPtr->AccountName.length() + urlPath.length() + 5];
@@ -355,10 +347,7 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
   {
     volatile int dummy645 = 1;
     
-  }
-
-  //static az_span content_to_upload = AZ_SPAN_LITERAL_FROM_STR("\r\nSome test content");
-  
+  } 
   az_storage_tables_upload_options uploadOptions = az_storage_tables_upload_options_default();
   
   uploadOptions._internal.acceptType = acceptTypeAzSpan;
@@ -428,9 +417,101 @@ az_result const blob_upload_result
                 return response.StatusCode;
             }
             */
-        }
+}
         
-        
+ //az_http_status_code TableClient::InsertTableEntity(const char * tableName, TableEntity pEntity, uint32_t pPropertyCount, ContType pContentType, AcceptType pAcceptType, ResponseType pResponseType, bool useSharedKeyLite)
+ az_http_status_code TableClient::InsertTableEntity(const char * tableName, TableEntity pEntity, ContType pContentType, AcceptType pAcceptType, ResponseType pResponseType, bool useSharedKeyLite)
+
+{
+  //pEntity.PartitionKey._internal.size
+    char PartitionKey[pEntity.PartitionKey._internal.size + 2] {0};
+    az_span_to_str(PartitionKey, sizeof(PartitionKey), pEntity.PartitionKey);
+    char RowKey[pEntity.RowKey._internal.size + 2] {0};
+    az_span_to_str(RowKey, sizeof(RowKey), pEntity.RowKey);
+    char SampleTime[pEntity.SampleTime._internal.size + 2] {0};
+    az_span_to_str(SampleTime, sizeof(SampleTime), pEntity.SampleTime);
+    
+    EntityProperty * Properties;
+    Properties = pEntity.Properties;
+    
+   
+
+    az_span _Name = az_span_create_from_str((char *)Properties[0].Name);
+    
+    az_span Name = az_span_create_from_str((char *)pEntity.Properties[0].Name);
+
+  char x_ms_timestamp[35] {0};
+  char timestamp[22] {0};
+
+  GetDateHeader(sysTime.getTime(), timestamp, x_ms_timestamp);
+
+  String timestampUTC = timestamp;
+  timestampUTC += ".0000000Z";
+
+  az_span contentTypeAzSpan = getContentType_az_span(pContentType);
+  az_span responseTypeAzSpan = getResponseType_az_span(pResponseType);
+  az_span acceptTypeAzSpan = getAcceptType_az_span(pAcceptType);
+
+  /*
+  char partKeySpan[25] {0};
+  size_t partitionKeyLength = 0;
+  az_span partitionKey = AZ_SPAN_FROM_BUFFER(partKeySpan);
+  makePartitionKey(analogTablePartPrefix, augmentPartitionKey, partitionKey, &partitionKeyLength);
+  partitionKey = az_span_slice(partitionKey, 0, partitionKeyLength);
+  */
+  //size_t propertyCount = pEntity.PropertyCount;
+  //EntityProperty theProperties[propertyCount];
+  
+  //theProperties[0] = pEntity.Properties[0];
+
+  //theProperties[0] = pEntity.Properties[0];
+  //theProperties = pEntity.Properties;
+   
+   size_t maxPropStrLength = 70; // max size of a property string
+   size_t outBytesWritten = 0;
+   char  propBuf[maxPropStrLength * pEntity.PropertyCount];
+   az_span outPropertySpan = AZ_SPAN_FROM_BUFFER(propBuf);
+   
+   GetTableXml(pEntity.Properties, pEntity.PropertyCount, maxPropStrLength, outPropertySpan, &outBytesWritten);
+
+   char * _properties = (char *)az_span_ptr(outPropertySpan);
+
+   //String props = _properties;
+   
+
+  const char * li1 = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>";
+  const char * li2 = "<entry xmlns:d=\"http://schemas.microsoft.com/ado/2007/08/dataservices\"";
+  const char * li3  = "xmlns:m=\"http://schemas.microsoft.com/ado/2007/08/dataservices/metadata\"";
+  const char * li4  = "xmlns=\"http://www.w3.org/2005/Atom\"><id>http://";
+        char * li5  = (char *)_accountPtr->AccountName.c_str();
+  const char * li6  = ".table.core.windows.net/";
+        char * li7  = (char *)tableName;
+  const char * li8  = "(PartitionKey='";
+        char * li9  = (char *)PartitionKey; 
+  const char * li10  = "',RowKey='";
+        char * li11  = (char *)RowKey; 
+  const char * li12  = "')</id><title/><updated>";
+        char * li13  = (char *)timestampUTC.c_str();
+  const char * li14  = "</updated><author><name /></author><content type=\"application/atom+xml\">";
+  const char * li15  = "<m:properties><d:PartitionKey>";
+        char * li16  = (char *)PartitionKey;
+  const char * li17  =  "</d:PartitionKey><d:RowKey>";
+        char * li18  = (char *)RowKey;
+  const char * li19  = "</d:RowKey>";  
+        char * li20  = _properties;
+  const char * li21  = "</m:properties></content></entry>";
+
+  char addBuffer[800];
+  sprintf(addBuffer, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", li1, li2, li3, li4,li5, li6, li7, li8, li9, li10,li11, li12, li13, li14, li15, li16, li17, li18, li19, li20, li21); 
+
+  volatile size_t buffLength = strlen(addBuffer);     
+             
+         //   , _account.AccountName, timestamp, pEntity.PartitionKey, pEntity.RowKey, GetTableXml(pEntity.Properties), tableName);
+
+    volatile int dumy4 = 1;
+
+  return AZ_HTTP_STATUS_CODE_CREATED;
+}      
 
 
 
@@ -442,7 +523,52 @@ az_result const blob_upload_result
             //_OperationResponseSingleQuery = null;
             //_OperationResponseQueryList = null;
         }
+
         
+        void GetTableXml(EntityProperty EntityProperties[], size_t propertyCount, size_t maxPropStrLength, az_span outSpan, size_t *outSpanLength)
+        {
+          
+            char prop[maxPropStrLength + 10] {0};
+            size_t outLength = 0;
+            for (size_t i = 0; i < propertyCount; i++)
+            {
+              // RoSchmi ToDo: define precondition      
+              strcpy(prop, EntityProperties[i].Prefix);
+              if ((prop != NULL) && (strlen(prop) > 0))
+              {                 
+                  outSpan = az_span_copy(outSpan, az_span_create_from_str((char *)prop));
+                  outLength += strlen((char *)prop);    
+              }           
+            }
+            az_span_copy_u8(outSpan, 0);
+            *outSpanLength = outLength;
+
+
+            //String returnValue = (char *)resultBuff;
+            
+
+            /*     
+            char resultBuff[maxPropStrLength * propertyCount] {0};
+            az_span result = AZ_SPAN_FROM_BUFFER(resultBuff);
+
+            outSpan
+
+            char prop[maxPropStrLength + 10] {0};
+            for (size_t i = 0; i < propertyCount; i++)
+            {
+              // RoSchmi ToDo: define precondition      
+              strcpy(prop, EntityProperties[i].Prefix);
+              if ((prop != NULL) && (strlen(prop) > 0))
+              {
+                  az_span propertySpan = az_span_create_from_str((char *)prop);
+                  result = az_span_copy(result, propertySpan);    
+              }           
+            }
+            az_span_copy_u8(result, 0);         
+            String returnValue = (char *)resultBuff;
+            */
+            //return returnValue;
+        }
         
         void GetDateHeader(DateTime time, char * stamp, char * x_ms_time)
         {
@@ -538,13 +664,3 @@ int32_t dow (int32_t year, int32_t month, int32_t day)
 {
   return (zeller (year, month, day) % 7) + 1;
 }
-
-
-        /*
-        byte[] GetBodyBytesAndLength(string body, out int contentLength)
-        {
-            var content = Encoding.UTF8.GetBytes(body);
-            contentLength = content.Length;
-            return content;
-        }
-        */

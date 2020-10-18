@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <AzureStorage/CloudStorageAccount.h>
+#include <AzureStorage/TableEntity.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <azure/core/az_http.h>
@@ -48,6 +49,7 @@ public:
     void send();
 
     az_http_status_code CreateTable(const char * tableName, ContType pContentType = ContType::contApplicationIatomIxml, AcceptType pAcceptType = AcceptType::acceptApplicationIjson, ResponseType pResponseType = ResponseType::returnContent, bool useSharedKeyLight = false);
+    az_http_status_code InsertTableEntity(const char * tableName, TableEntity pEntity, ContType pContentType, AcceptType pAcceptType, ResponseType pResponseType, bool useSharedKeyLite = false);
     //void CreateTableAuthorizationHeader(char * content, char * canonicalResource, const char * ptimeStamp, String pHttpVerb, ContType pContentType, char * pMd5Hash, char pAutorizationHeader[], char * pHash, int pHashLength, bool useSharedKeyLite = false);
     void CreateTableAuthorizationHeader(char * content, char * canonicalResource, const char * ptimeStamp, String pHttpVerb, az_span pConentType, char * pMd5Hash, char pAutorizationHeader[], char * pHash, int pHashLength, bool useSharedKeyLite = false);
     int32_t dow(int32_t year, int32_t month, int32_t day);

@@ -3,7 +3,6 @@
 #include <Arduino.h>
 #include <AzureStorage/CloudStorageAccount.h>
 
-
 /**
  * constructor
  */
