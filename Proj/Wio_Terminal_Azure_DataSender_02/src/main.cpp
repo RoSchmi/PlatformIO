@@ -225,14 +225,14 @@ void setup() {
     }
     */
    
-    CloudStorageAccount myCloudStorageAccount(AZURE_CONFIG_ACCOUNT_NAME, AZURE_CONFIG_ACCOUNT_KEY, true);
-    //CloudStorageAccount myCloudStorageAccount(AZURE_CONFIG_ACCOUNT_NAME, AZURE_CONFIG_ACCOUNT_KEY, false);
+    //CloudStorageAccount myCloudStorageAccount(AZURE_CONFIG_ACCOUNT_NAME, AZURE_CONFIG_ACCOUNT_KEY, true);
+    CloudStorageAccount myCloudStorageAccount(AZURE_CONFIG_ACCOUNT_NAME, AZURE_CONFIG_ACCOUNT_KEY, false);
     
     CloudStorageAccount * myCloudStorageAccountPtr = &myCloudStorageAccount;
 
     String myUriEndPoint =  myCloudStorageAccount.UriEndPointTable;
 
-// Example see  
+// Example see 
 // https://github.com/Azure/azure-sdk-for-c/blob/5c7444dfcd5f0b3bcf3aec2f7b62639afc8bd664/sdk/samples/storage/blobs/src/blobs_client_example.c
 
 //Für ein BLOB schließt der Basis-URI den Namen des Kontos, den Namen des Containers und den Namen des BLOB ein:
@@ -291,7 +291,7 @@ TableClient table(myCloudStorageAccountPtr, myX509Certificate, httpPtr);
 
 //String tableName = "newtable";
 
-const char * tableName = "AnalogTestValues2021";
+const char * tableName = "AnalogTestValues2020";
 
 // RoSchmi do not delete
 //az_http_status_code theResult = createTable(myCloudStorageAccountPtr, myX509Certificate, tableName);
@@ -310,16 +310,58 @@ int timeZoneOffsetUTC = (TIMEZONE * 60) / 1;
 char sign = timeZoneOffsetUTC < 0 ? '-' : '+';
 
 char TimeOffsetUTCString[10];
-sprintf(TimeOffsetUTCString, " %c%3i", sign, timeZoneOffsetUTC);
+sprintf(TimeOffsetUTCString, " %c%03i", sign, timeZoneOffsetUTC);
+
+   uint32_t * ptr_one;
+   uint32_t * last_ptr_one;
+   // This code snippet was used to get the addresses of the heap
+   /*
+   for (volatile int i = 0; 1 < 100000; i++)
+   {
+     last_ptr_one = ptr_one;
+     ptr_one = 0;
+     ptr_one = (uint32_t *)malloc(1);
+     if (ptr_one == 0)
+     {
+       ptr_one = last_ptr_one;
+       volatile int dummy68424 = 1;
+     }
+     else
+     {
+       *ptr_one = (uint32_t)0xAA55AA55;
+       char printBuf[25];
+       
+       if (((uint32_t)ptr_one % 256)== 0)
+       {
+         sprintf(printBuf, "%09x", (uint32_t)ptr_one);
+          lcd_log_line((char*)printBuf);
+       }
+     } 
+   }
+   */
+  // Fills heap from 0x20029000 - 0x2002FE00 with pattern AA55
+  // So you can see at breakpoints how much of heap was used
+  ptr_one = (uint32_t *)0x20029000;
+  while (ptr_one < (uint32_t *)0x2002fe00)
+  {
+    *ptr_one = (uint32_t)0xAA55AA55;
+     ptr_one++;
+  }
+
+
+
 
 
 
 //String TimeOffsetUTCString = TIMEZONE < 0 ? TIMEZONE.ToString("D3") : "+" + timeZoneOffset.ToString("D3");
 
 char sampleTime[25];
-sprintf(sampleTime, "%2i/%2i/%4i %2i:%2i:%2i",now.month(), now.day(), now.year() - 30, now.hour(), now.minute(), now.second(), TimeOffsetUTCString);
+sprintf(sampleTime, "%02i/%02i/%04i %02i:%02i:%02i%s",now.month(), now.day(), now.year() - 30, now.hour(), now.minute(), now.second(), TimeOffsetUTCString);
 //string sampleTime = actDate.Month.ToString("D2") + "/" + actDate.Day.ToString("D2") + "/" + actDate.Year + " " + actDate.Hour.ToString("D2") + ":" + actDate.Minute.ToString("D2") + ":" + actDate.Second.ToString("D2") + " " + TimeOffsetUTCString;
   
+  // RoSchmi: for tests set sampleTime
+  strcpy(sampleTime, "10/21/2020 10:05:19 +060");
+
   size_t propertyCount = 5;
   EntityProperty AnalogPropertiesArray[propertyCount]; // = {{.Prefix = "H1"}, {.Prefix = "H1"}, {.Prefix = "H1"}, {.Prefix = "H1"}, {.Prefix = "H1"} };
   AnalogPropertiesArray[0] = (EntityProperty)TableEntityProperty((char *)"SampleTime", (char *) sampleTime, (char *)"Edm.String");
@@ -342,6 +384,12 @@ sprintf(sampleTime, "%2i/%2i/%4i %2i:%2i:%2i",now.month(), now.day(), now.year()
   az_span rowKey = AZ_SPAN_FROM_BUFFER(rowKeySpan);
   makeRowKey(now, rowKey, &rowKeyLength);
   rowKey = az_span_slice(rowKey, 0, rowKeyLength);
+
+  // RoSchmi: for tests
+  rowKey = AZ_SPAN_LITERAL_FROM_STR("79800210103742");
+
+  
+
 
   now = sysTime.getTime();
   //DateTime actDate = DateTime.Now;
@@ -525,7 +573,7 @@ az_http_status_code insertTableEntity(CloudStorageAccount *pAccountPtr, X509Cert
 {
     TableClient table(pAccountPtr, pCaCert,  httpPtr);
     
-    az_http_status_code resultCode2 = table.InsertTableEntity(pTableName, pTableEntity,  contApplicationIatomIxml, acceptApplicationIjson, dont_returnContent, false);
+    az_http_status_code resultCode2 = table.InsertTableEntity(pTableName, pTableEntity,  contApplicationIatomIxml, acceptApplicationIatomIxml, returnContent, false);
 
     
 }

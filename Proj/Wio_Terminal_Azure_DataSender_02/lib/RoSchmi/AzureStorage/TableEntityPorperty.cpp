@@ -20,7 +20,8 @@ EntityProperty TableEntityProperty(char * pName, char * pValue, char * pType)
     */
     char buf[strlen(pName) + strlen(pValue) + strlen(pType) + 25]; 
     //sprintf(buf, "<d:%s m:type=\"%s\">%s</d:%s>", Name, Type, Value, Type, Name);
-    sprintf(buf, "<d:%s m:type=%c%s%c>%s</d:%s>", pName, '"', pType, '"', pValue, pType, pName);
+    //sprintf(buf, "<d:%s m:type=%c%s%c>%s</d:%s>", pName, '"', pType, '"', pValue, pType, pName);
+    sprintf(buf, "<d:%s m:type=%c%s%c>%s</d:%s>", pName, '"', pType, '"', pValue, pName);
     strcpy(property.Prefix, buf);
     strcpy(property.Name, pName);
     strcpy(property.Value, pValue);

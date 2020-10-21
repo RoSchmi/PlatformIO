@@ -94,6 +94,11 @@ static az_span const AZ_STORAGE_TABLES_MAX_DATASERVICE_VERS_3_0_NETFX = AZ_SPAN_
 static az_span const AZ_HTTP_HEADER_CONTENT_LENGTH = AZ_SPAN_LITERAL_FROM_STR("Content-Length");
 static az_span const AZ_HTTP_HEADER_CONTENT_TYPE = AZ_SPAN_LITERAL_FROM_STR("Content-Type");
 
+static az_span const AZ_HTTP_HEADER_ACCEPT_ENCODING
+= AZ_SPAN_LITERAL_FROM_STR("Accept-Encoding");
+
+static az_span const AZ_HTTP_ACCEPT_ENCODING_IDENTITY = AZ_SPAN_LITERAL_FROM_STR("identity");
+
 static az_span const AZ_HTTP_HEADER_CONNECTION
     = AZ_SPAN_LITERAL_FROM_STR("Connection");
 
@@ -264,6 +269,8 @@ AZ_NODISCARD az_result az_storage_tables_upload(
       _az_RETURN_IF_FAILED(az_http_request_append_header(
       &request, AZ_STORAGE_TABLES_HEADER_AUTHORIZATION, authorizationHeader));
 
+az_span fakeContentMd5 = AZ_SPAN_LITERAL_FROM_STR("123456784534");
+
 _az_RETURN_IF_FAILED(az_http_request_append_header(
       &request, AZ_STORAGE_TABLES_HEADER_CONTENT_MD5, contentMd5));
 
@@ -282,6 +289,17 @@ _az_RETURN_IF_FAILED(az_http_request_append_header(
 _az_RETURN_IF_FAILED(az_http_request_append_header(
       &request, AZ_STORAGE_TABLES_HEADER_MAX_DATASERVICE_VERSION, AZ_STORAGE_TABLES_MAX_DATASERVICE_VERS_3_0_NETFX));
     
+// Add Accept-Encoding header
+//  _az_RETURN_IF_FAILED(
+//      az_http_request_append_header(&request, AZ_HTTP_HEADER_ACCEPT_ENCODING, AZ_HTTP_ACCEPT_ENCODING_IDENTITY));
+
+
+
+// Add connection Close header
+  _az_RETURN_IF_FAILED(
+      az_http_request_append_header(&request, AZ_HTTP_HEADER_CONNECTION, AZ_HTTP_CONNECTION_CLOSE));
+
+
   uint8_t content_length[_az_INT64_AS_STR_BUFFER_SIZE] = { 0 };
   az_span content_length_span = AZ_SPAN_FROM_BUFFER(content_length);
 
@@ -294,8 +312,8 @@ _az_RETURN_IF_FAILED(az_http_request_append_header(
   _az_RETURN_IF_FAILED(
       az_http_request_append_header(&request, AZ_HTTP_HEADER_CONTENT_LENGTH, content_length_span));
 
-_az_RETURN_IF_FAILED(
-      az_http_request_append_header(&request, AZ_HTTP_HEADER_CONNECTION, AZ_HTTP_CONNECTION_CLOSE));
+  //_az_RETURN_IF_FAILED(
+  //    az_http_request_append_header(&request, AZ_HTTP_HEADER_CONNECTION, AZ_HTTP_CONNECTION_CLOSE));
 
 //_az_RETURN_IF_FAILED(
 //      az_http_request_append_header(&request, AZ_HTTP_HEADER_HOST, ref_client->_internal.endpoint));

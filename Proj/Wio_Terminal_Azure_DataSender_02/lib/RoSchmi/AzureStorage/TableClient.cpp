@@ -255,6 +255,11 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
 
   GetDateHeader(sysTime.getTime(), timestamp, x_ms_timestamp);
 
+  
+
+
+  
+
   String timestampUTC = timestamp;
   timestampUTC += ".0000000Z";
 
@@ -287,6 +292,11 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
 
   az_span content_to_upload = az_span_create_from_str(addBuffer);
 
+   String urlPath = tableName;
+   String TableEndPoint = _accountPtr->UriEndPointTable;
+   String Host = _accountPtr->HostNameTable;
+
+   String Url = TableEndPoint + "/Tables()";
 
 
   char accountName_and_Tables[_accountPtr->AccountName.length() + 15];
@@ -304,7 +314,7 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
   CreateTableAuthorizationHeader((char *)addBuffer, accountName_and_Tables, (const char *)x_ms_timestamp, HttpVerb, contentTypeAzSpan, md5Buffer, authorizationHeaderBuffer, hushBuffer, hashBufferLength, useSharedKeyLite = false);
 
   String authorizationHeader = String((char *)authorizationHeaderBuffer);
-  String urlPath = tableName;
+  
 
             /*         
             char canonResourceBuffer[_accountPtr->AccountName.length() + urlPath.length() + 5];
@@ -317,14 +327,13 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
             String canonicalizedHeaders = canonHeadersBuffer;
             */
           
-            String TableEndPoint = _accountPtr->UriEndPointTable;
-            String Host = _accountPtr->HostNameTable;
+            
             
             az_storage_tables_client tabClient;        
             az_storage_tables_client_options options = az_storage_tables_client_options_default();
                         
              if (az_storage_tables_client_init(
-          &tabClient, az_span_create_from_str((char *)Host.c_str()), AZ_CREDENTIAL_ANONYMOUS, &options)
+          &tabClient, az_span_create_from_str((char *)Url.c_str()), AZ_CREDENTIAL_ANONYMOUS, &options)
       != AZ_OK)
   {
       volatile int dummy643 = 1;
@@ -426,24 +435,36 @@ az_result const blob_upload_result
   //pEntity.PartitionKey._internal.size
     char PartitionKey[pEntity.PartitionKey._internal.size + 2] {0};
     az_span_to_str(PartitionKey, sizeof(PartitionKey), pEntity.PartitionKey);
+
     char RowKey[pEntity.RowKey._internal.size + 2] {0};
     az_span_to_str(RowKey, sizeof(RowKey), pEntity.RowKey);
+
     char SampleTime[pEntity.SampleTime._internal.size + 2] {0};
     az_span_to_str(SampleTime, sizeof(SampleTime), pEntity.SampleTime);
     
     EntityProperty * Properties;
     Properties = pEntity.Properties;
     
-   
-
-    az_span _Name = az_span_create_from_str((char *)Properties[0].Name);
     
-    az_span Name = az_span_create_from_str((char *)pEntity.Properties[0].Name);
+    
+    //az_span Name = az_span_create_from_str((char *)pEntity.Properties[0].Name);
 
   char x_ms_timestamp[35] {0};
   char timestamp[22] {0};
 
   GetDateHeader(sysTime.getTime(), timestamp, x_ms_timestamp);
+
+  // RoSchmi: for tests
+
+  //strcpy(x_ms_timestamp, "Wed, 21 Oct 2020 08:53:19 GMT");
+  //strcpy(x_ms_timestamp, "Wed, 21 Oct 2020 10:05:19 GMT");
+  //strcpy(x_ms_timestamp, "Wed, 21 Oct 2020 10:42:19 GMT");
+  strcpy(x_ms_timestamp, "Wed, 21 Oct 2020 15:19:19 GMT");
+  //strcpy(timestamp, "2020-10-21T08:53:19");
+  //strcpy(timestamp, "2020-10-21T10:05:19");
+  //strcpy(timestamp, "2020-10-21T10:42:19");
+  strcpy(timestamp, "2020-10-21T15:19:19");
+
 
   String timestampUTC = timestamp;
   timestampUTC += ".0000000Z";
@@ -452,21 +473,6 @@ az_result const blob_upload_result
   az_span responseTypeAzSpan = getResponseType_az_span(pResponseType);
   az_span acceptTypeAzSpan = getAcceptType_az_span(pAcceptType);
 
-  /*
-  char partKeySpan[25] {0};
-  size_t partitionKeyLength = 0;
-  az_span partitionKey = AZ_SPAN_FROM_BUFFER(partKeySpan);
-  makePartitionKey(analogTablePartPrefix, augmentPartitionKey, partitionKey, &partitionKeyLength);
-  partitionKey = az_span_slice(partitionKey, 0, partitionKeyLength);
-  */
-  //size_t propertyCount = pEntity.PropertyCount;
-  //EntityProperty theProperties[propertyCount];
-  
-  //theProperties[0] = pEntity.Properties[0];
-
-  //theProperties[0] = pEntity.Properties[0];
-  //theProperties = pEntity.Properties;
-   
    size_t maxPropStrLength = 70; // max size of a property string
    size_t outBytesWritten = 0;
    char  propBuf[maxPropStrLength * pEntity.PropertyCount];
@@ -477,12 +483,14 @@ az_result const blob_upload_result
    char * _properties = (char *)az_span_ptr(outPropertySpan);
 
    //String props = _properties;
+
+   String HttpVerb = "POST";
    
 
-  const char * li1 = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>";
-  const char * li2 = "<entry xmlns:d=\"http://schemas.microsoft.com/ado/2007/08/dataservices\"";
-  const char * li3  = "xmlns:m=\"http://schemas.microsoft.com/ado/2007/08/dataservices/metadata\"";
-  const char * li4  = "xmlns=\"http://www.w3.org/2005/Atom\"><id>http://";
+  const char * li1 = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>";                  
+  const char * li2 = "<entry xmlns:d=\"http://schemas.microsoft.com/ado/2007/08/dataservices\"  ";                 
+  const char * li3  = "xmlns:m=\"http://schemas.microsoft.com/ado/2007/08/dataservices/metadata\" ";
+  const char * li4  = "xmlns=\"http://www.w3.org/2005/Atom\"> <id>http://";
         char * li5  = (char *)_accountPtr->AccountName.c_str();
   const char * li6  = ".table.core.windows.net/";
         char * li7  = (char *)tableName;
@@ -490,8 +498,8 @@ az_result const blob_upload_result
         char * li9  = (char *)PartitionKey; 
   const char * li10  = "',RowKey='";
         char * li11  = (char *)RowKey; 
-  const char * li12  = "')</id><title/><updated>";
-        char * li13  = (char *)timestampUTC.c_str();
+  const char * li12  = "')</id><title /><updated>";
+        char * li13  = (char *)x_ms_timestamp;
   const char * li14  = "</updated><author><name /></author><content type=\"application/atom+xml\">";
   const char * li15  = "<m:properties><d:PartitionKey>";
         char * li16  = (char *)PartitionKey;
@@ -501,13 +509,102 @@ az_result const blob_upload_result
         char * li20  = _properties;
   const char * li21  = "</m:properties></content></entry>";
 
-  char addBuffer[800];
-  sprintf(addBuffer, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", li1, li2, li3, li4,li5, li6, li7, li8, li9, li10,li11, li12, li13, li14, li15, li16, li17, li18, li19, li20, li21); 
+  char addBuffer[900];
+  sprintf(addBuffer, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", li1, li2, li3, li4,li5, li6, li7, li8, li9, li10,li11, li12, li13, li14, li15, li16, li17, li18, li19, li20, li21, (char *)"    "); 
 
-  volatile size_t buffLength = strlen(addBuffer);     
+  volatile size_t buffLength = strlen(addBuffer);
+
+  az_span content_to_upload = az_span_create_from_str(addBuffer);   
              
          //   , _account.AccountName, timestamp, pEntity.PartitionKey, pEntity.RowKey, GetTableXml(pEntity.Properties), tableName);
 
+   String urlPath = tableName;
+   String TableEndPoint = _accountPtr->UriEndPointTable;
+   String Host = _accountPtr->HostNameTable;
+   String Url = TableEndPoint + "/" + urlPath + "()";
+
+
+char accountName_and_Tables[_accountPtr->AccountName.length() + 15];
+ sprintf(accountName_and_Tables, "/%s/%s%s", (char *)_accountPtr->AccountName.c_str(), tableName, (const char *)"()");
+ //sprintf(accountName_and_Tables, "/%s/%s", (char *)_accountPtr->AccountName.c_str(), tableName);
+ // RoSchmi todo -> eliminate
+  char hushBuffer[5];
+  int hashBufferLength = 5;
+
+  char md5Buffer[32 +1] {0};
+
+  //char authorizationHeaderBuffer[strlen(_accountPtr->AccountName.c_str()) + 60] {0};
+  char authorizationHeaderBuffer[100] {0};
+
+  CreateTableAuthorizationHeader((char *)addBuffer, accountName_and_Tables, (const char *)x_ms_timestamp, HttpVerb, contentTypeAzSpan, md5Buffer, authorizationHeaderBuffer, hushBuffer, hashBufferLength, useSharedKeyLite = false);
+
+  String authorizationHeader = String((char *)authorizationHeaderBuffer);
+  
+            
+            az_storage_tables_client tabClient;        
+            az_storage_tables_client_options options = az_storage_tables_client_options_default();
+                        
+             if (az_storage_tables_client_init(
+          &tabClient, az_span_create_from_str((char *)Url.c_str()), AZ_CREDENTIAL_ANONYMOUS, &options)
+      != AZ_OK)
+  {
+      volatile int dummy643 = 1;
+    
+  }
+
+volatile az_span theEndpoint =  tabClient._internal.endpoint;
+
+   uint8_t response_buffer[200] = { 0 };
+  az_http_response http_response;
+  if (az_result_failed(az_http_response_init(&http_response, AZ_SPAN_FROM_BUFFER(response_buffer))))
+  {
+     volatile int dummy644 = 1;
+  }
+   /*
+   volatile uint32_t * ptr_one;
+   volatile uint32_t * last_ptr_one;
+   for (volatile int i = 0; 1 < 100000; i++)
+   {
+     last_ptr_one = ptr_one;
+     ptr_one = 0;
+     ptr_one = (uint32_t *)malloc(1);
+     if (ptr_one == 0)
+     {
+       ptr_one = last_ptr_one;
+       volatile int dummy68424 = 1;
+     }
+     else
+     {
+       *ptr_one = (uint32_t)0xAA55AA55;
+     } 
+   }
+  */
+  
+  if (az_http_response_init(&http_response, AZ_SPAN_FROM_BUFFER(response_buffer)) != AZ_OK)
+  {
+    volatile int dummy645 = 1;
+    
+  } 
+  az_storage_tables_upload_options uploadOptions = az_storage_tables_upload_options_default();
+  
+  uploadOptions._internal.acceptType = acceptTypeAzSpan;
+  uploadOptions._internal.contentType = contentTypeAzSpan;
+  uploadOptions._internal.perferType = responseTypeAzSpan;
+
+ setHttpClient(_httpPtr);
+    setCaCert(_caCert);
+
+    
+
+  //az_result const blob_upload_result
+  //    = az_storage_tables_upload(&tabClient, content_to_upload, az_span_create_from_str(md5Buffer), az_span_create_from_str((char *)(authorizationHeader.c_str())), az_span_create_from_str((char *)(x_ms_timestamp.c_str())),  &uploadOptions, &http_response);
+az_result const blob_upload_result
+      = az_storage_tables_upload(&tabClient, content_to_upload, az_span_create_from_str(md5Buffer), az_span_create_from_str((char *)authorizationHeader.c_str()), az_span_create_from_str((char *)x_ms_timestamp), &uploadOptions, &http_response);
+
+    //tabClient._internal.options
+   //tabClient._internal.credential->_internal.apply_credential_policy
+
+   volatile int dummy547 = 1;
     volatile int dumy4 = 1;
 
   return AZ_HTTP_STATUS_CODE_CREATED;

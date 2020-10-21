@@ -52,7 +52,7 @@ az_http_client_send_request(az_http_request const* request, az_http_response* re
   
   az_http_method requMethod = request->_internal.method;
   //az_span requUrl = request->_internal.url;
-  az_span requUrl = az_span_slice(request->_internal.url, 0, 100);
+  
   volatile int32_t max_header_count = request->_internal.max_headers;
 
   volatile int32_t theQueryStart = request->_internal.query_start;
@@ -63,10 +63,11 @@ az_http_client_send_request(az_http_request const* request, az_http_response* re
   az_http_request_get_header(request, 1, &header_name, &header_value);
   */
 
-
+  /*
   char requUrlStr [101];
   az_span_to_str(requUrlStr, 101, requUrl);
   String requUrlString = String(requUrlStr);
+  */
 
 uint8_t headers_buffer[300] {0};
   az_span headers_span = AZ_SPAN_FROM_BUFFER(headers_buffer);
@@ -117,20 +118,58 @@ volatile size_t headerSize = strlen(theHeader_str);
     //String theUrl = "jsonplaceholder.typicode.com";
     //String thePath = "/posts?userId=1";
 
-    String theUrl = "prax47.table.core.windows.net";
-    String thePath = "/Tables()";
     
-    deviceHttp->begin(theUrl, (uint16_t)443, thePath, _caCertificate);
+
+    //az_span requUrl = az_span_slice(request->_internal.url, 0, 100);
+    char urlBuffer[az_span_size(request->_internal.url) + 2] {0};
+    az_span requUrl = AZ_SPAN_FROM_BUFFER(urlBuffer);
+
+    az_span_copy(requUrl, request->_internal.url);
+    //String theUrl = "prax47.table.core.windows.net";
+
+    String urlString = (char *)urlBuffer;
+    int foundProtocol = urlString.indexOf(':');
+    String protocol = "";
+    if (foundProtocol != -1)
+    {
+        protocol = urlString.substring(0, foundProtocol);
+        if ((protocol == "https") || (protocol == "http"))
+        {
+          urlString = urlString.substring(foundProtocol + 3);
+        }       
+    }
+    int foundSlash = urlString.indexOf('/');
+    String host = foundSlash != -1 ? urlString.substring(0, foundSlash) : urlString;
+    String resource = foundSlash != -1 ? urlString.substring(foundSlash) : "";
+    uint16_t port = protocol == "http" ? 80 : 443;
+    
+    if (port == 80)
+    {
+      deviceHttp->begin(host, port, resource);
+    }
+    else
+    {
+      deviceHttp->begin(host, port, resource, _caCertificate);
+    }
+    deviceHttp->setReuse(false);
+    deviceHttp->setUserAgent("RsNetmfHttpClient");
+    
+    
     //deviceHttp->begin(theUrl, (uint16_t)80, thePath);
     //int httpCode = deviceHttp->GET();
-    deviceHttp->setUserAgent("RsWioClient");
+    //deviceHttp->setUserAgent("RsWioClient");
+    
     //deviceHttp->addHeader()
 
-    az_span head_name = { 0 };
-    az_span head_value = { 0 };
+
     size_t valueBufferLength = request->_internal.url_length + 40;
     char name_buffer[30] {0};
     char value_buffer[valueBufferLength] {0};
+    az_span head_name = AZ_SPAN_FROM_BUFFER(name_buffer);
+    az_span head_value = AZ_SPAN_FROM_BUFFER(value_buffer);
+    
+    String nameString = "";
+    String valueString = "";
 
     for (int32_t offset = (headerCount - 1); offset >= 0; offset--)
     {
@@ -138,12 +177,14 @@ volatile size_t headerSize = strlen(theHeader_str);
       
       az_span_to_str((char *)name_buffer, 30, head_name);
       az_span_to_str((char *)value_buffer, valueBufferLength, head_value);
+      nameString = (char *)name_buffer;
+      valueString = (char *)value_buffer;
 
-      deviceHttp->addHeader(name_buffer, value_buffer, true, true);   
+      deviceHttp->addHeader(nameString, valueString, true, true);   
     }
     //request->_internal.body
 
-    int32_t bodySize = request->_internal.body._internal.size;
+    
     
     
     //size_t bodyLength = az_span_size(request->_internal.body);
@@ -152,40 +193,84 @@ volatile size_t headerSize = strlen(theHeader_str);
 
     //size_t bodyLength = az_span_size(body);
 
-    char theBody[530] {0};
+    int32_t bodySize = request->_internal.body._internal.size;
+    char theBody[bodySize + 10] {0};
     
     az_span_to_str((char *)theBody, bodySize + 1, request->_internal.body);
+    //theBody[bodySize] = '\r';
+    //theBody[bodySize + 1] = '\n';
+
+
+
+    String bodyString = (char *)theBody;
+
+    String bodyString_01 = bodyString.substring(0, 100);
+    String bodyString_02 = bodyString.substring(100, 200);
+    String bodyString_03 = bodyString.substring(200, 300);
+    String bodyString_04 = bodyString.substring(300, 400);
+    String bodyString_05 = bodyString.substring(400, 500);
+    String bodyString_06 = bodyString.substring(500, 600);
+    String bodyString_07 = bodyString.substring(600, 700);
+    String bodyString_08 = bodyString.substring(700, 800);
+    String bodyString_09 = bodyString.substring(800);
+
+
+
+
+
+
 
     volatile size_t thebodiesLength = strlen(theBody);
-    char byte_00 = theBody[0];
-    char byte_528 = theBody[528];
-    char byte_529 = theBody[529];
+    volatile char byte_00 = bodyString[0];
+    volatile char byte_821 = bodyString[821];
+    volatile char byte_822 = bodyString[822];
+    volatile char byte_823 = bodyString[823];
+    volatile char byte_824 = bodyString[824];
 
 
-    int httpCode = deviceHttp->POST(theBody);
-    delay(110);
-    if (httpCode > 0) { //Check for the returning code 
-      String payload = deviceHttp->getString();
-      //lcd_log_line("Http-Code:");
-      //lcd_log_line(itoa((int)httpCode, buf, 10));
-      int length = payload.length();
-      int indexCtr = 0;
-      int pageWidth = 50;
-      Serial.println(httpCode);
-      delay(2000);
-      String partMessage;
-      while (indexCtr < length)
+
+  
+    if (az_span_is_content_equal(requMethod, AZ_SPAN_LITERAL_FROM_STR("POST")))
+    //if (requMethod az_span_c  az_http_method_post )
+    {
+      int httpCode = deviceHttp->POST(bodyString);
+      delay(110);
+      if (httpCode > 0) { //Check for the returning code 
+        String payload = deviceHttp->getString();
+        //lcd_log_line("Http-Code:");
+        //lcd_log_line(itoa((int)httpCode, buf, 10));
+        int length = payload.length();
+        int indexCtr = 0;
+        int pageWidth = 50;
+        Serial.println(httpCode);
+        delay(2000);
+        String partMessage;
+        while (indexCtr < length)
+        {
+          partMessage = payload.substring(indexCtr, indexCtr + pageWidth);
+          indexCtr += pageWidth;
+        } 
+        Serial.println(payload);
+      }
+      else {
+        // Serial.println("Error on HTTP request");
+        volatile int dummy2 = 1;
+        dummy2++;
+      }
+    }
+    else
+    {
+      if (az_span_is_content_equal(requMethod, AZ_SPAN_LITERAL_FROM_STR("GET")))
       {
-        partMessage = payload.substring(indexCtr, indexCtr + pageWidth);
-        indexCtr += pageWidth;
-      } 
-       Serial.println(payload);
+        volatile int dummy7jsgj = 1;
+      }
+      else
+      {
+        volatile int dummy7jdgj = 1;
+      }
+      
     }
-    else {
-     // Serial.println("Error on HTTP request");
-      volatile int dummy2 = 1;
-      dummy2++;
-    }
+    
     
 
 
