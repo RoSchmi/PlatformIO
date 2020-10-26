@@ -19,6 +19,8 @@
 #ifndef _TABLECLIENT_H_
 #define _TABLECLIENT_H_
 
+#define MAX_TABLENAME_LENGTH 50
+
   typedef enum {
     contApplicationIatomIxml,
     contApplicationIjson

@@ -7,24 +7,31 @@
 EntityProperty TableEntityProperty(char * pName, char * pValue, char * pType)
 {
     EntityProperty property;
+   char * validName = (char *)pName;
+   if (strlen(pName) >  MAX_ENTITYPROPERTY_NAME_LENGTH)
+   {
+      validName[MAX_ENTITYPROPERTY_NAME_LENGTH] = '\0';
+   }
 
-    /*
-    char buf[strlen(pName) + strlen(pValue) + strlen(pType) + 25]; 
-    //sprintf(buf, "<d:%s m:type=\"%s\">%s</d:%s>", Name, Type, Value, Type, Name);
-    sprintf(buf, "<d:%s m:type=%c%s%c>%s</d:%s>", pName, '"', pType, '"', pValue, pType, pName);
-    property.Prefix = az_span_create_from_str((char *)buf);
-    property.Name = az_span_create_from_str(pName);
-    property.Value = az_span_create_from_str(pValue);
-    property.Type = az_span_create_from_str(pType);
-    return property;
-    */
-    char buf[strlen(pName) + strlen(pValue) + strlen(pType) + 25]; 
-    //sprintf(buf, "<d:%s m:type=\"%s\">%s</d:%s>", Name, Type, Value, Type, Name);
-    //sprintf(buf, "<d:%s m:type=%c%s%c>%s</d:%s>", pName, '"', pType, '"', pValue, pType, pName);
-    sprintf(buf, "<d:%s m:type=%c%s%c>%s</d:%s>", pName, '"', pType, '"', pValue, pName);
-    strcpy(property.Prefix, buf);
-    strcpy(property.Name, pName);
-    strcpy(property.Value, pValue);
-    strcpy(property.Type, pType); 
+   char * validValue = (char *)pValue;
+   if (strlen(pValue) >  MAX_ENTITYPROPERTY_VALUE_LENGTH)
+   {
+      validValue[MAX_ENTITYPROPERTY_VALUE_LENGTH] = '\0';
+   }
+
+   char * validType = (char *)pType;
+   if (strlen(pType) >  MAX_ENTITYPROPERTY_TYPE_LENGTH)
+   {
+      validType[MAX_ENTITYPROPERTY_TYPE_LENGTH] = '\0';
+   }
+   
+ 
+    //char buf[(MAX_ENTITYPROPERTY_NAME_LENGTH * 2) + MAX_ENTITYPROPERTY_VALUE_LENGTH + MAX_ENTITYPROPERTY_TYPE_LENGTH + 20];
+
+    //sprintf(buf, "<d:%s m:type=%c%s%c>%s</d:%s>", validName, '"', validType, '"', validValue, validName);
+    //strcpy(property.Prefix, buf);
+    strcpy(property.Name, validName);
+    strcpy(property.Value, validValue);
+    strcpy(property.Type, validType); 
     return property;
 }

@@ -14,9 +14,6 @@
 
 #include <azure/core/az_span.h>
 
-
-
-
 CloudStorageAccount  * _accountPtr;
 HTTPClient * _httpPtr;
 const char * _caCert;
@@ -35,13 +32,10 @@ static SysTime sysTime;
 
 // forward declarations
 void GetDateHeader(DateTime, char * stamp, char * x_ms_time);
-
 void appendCharArrayToSpan(az_span targetSpan, const size_t maxTargetLength, const size_t startIndex, size_t *outEndIndex, const char * stringToAppend);
-
 az_span  getContentType_az_span(ContType pContentType);
 az_span  getResponseType_az_span(ResponseType pResponseType);
 az_span  getAcceptType_az_span(AcceptType pAcceptType);
-
 int base64_decode(const char * input, char * output);
 int32_t dow(int32_t year, int32_t month, int32_t day);
 void GetTableXml(EntityProperty EntityProperties[], size_t propertyCount, size_t maxPropStrLength, az_span outSpan, size_t *outSpanLength);
@@ -58,7 +52,7 @@ void TableClient::CreateTableAuthorizationHeader(char * content, char * canonica
         //https://community.mongoose-os.com/t/md5-library-setup-and-config-examples/856
 
         // create Md5Hash           
-        size_t Md5HashStrLenght = 16 + 1;
+        const size_t Md5HashStrLenght = 16 + 1;
         char md5HashStr[Md5HashStrLenght] {0};
         int create_Md5_result = createMd5Hash(md5HashStr, Md5HashStrLenght, content);
                 
@@ -67,22 +61,20 @@ void TableClient::CreateTableAuthorizationHeader(char * content, char * canonica
         String theString = pMD5HashHex;   
     }
                         
-    char toSign[(strlen(canonicalResource) + 100)];
+    char toSign[(strlen(canonicalResource) + 100)];  // if counted correctly, at least 93 needed
     if (useSharedKeyLite)
-    {
-        //sprintf(toSign, "%s\%s", (char *)ptimeStamp.c_str(), canonicalResource);
+    {       
         sprintf(toSign, "%s\%s", (char *)ptimeStamp, canonicalResource);                      
     }
     else
-    {
-        //sprintf(toSign, "%s\n%s\n%s\n%s\n%s", (char *)pHttpVerb.c_str(), pMD5HashHex , (char *)contentType.c_str(), (char *)ptimeStamp, canonicalResource);
+    {     
         sprintf(toSign, "%s\n%s\n%s\n%s\n%s", (char *)pHttpVerb.c_str(), pMD5HashHex , (char *)contentTypeString, (char *)ptimeStamp, canonicalResource);                       
     }
             
     // Produce Authentication Header
     // 1) Base64 decode the Azure Storage Key
            
-    // Hoe to decode Base 64 String
+    // How to decode Base 64 String
     //https://www.ncbi.nlm.nih.gov/IEB/ToolBox/CPP_DOC/lxr/source/src/connect/mbedtls/
             
     // Base64-decode (Azure Storage Key)
@@ -91,76 +83,28 @@ void TableClient::CreateTableAuthorizationHeader(char * content, char * canonica
     int decodeResult = base64_decode(_accountPtr->AccountKey.c_str(), base64DecOut);
                 
     size_t decodedKeyLen = (decodeResult != -1) ? decodeResult : 0; 
-                           
-            /*
-              volatile byte c0 = base64DecOut[0];
-              volatile byte c1 = base64DecOut[1];
-              volatile byte c2 = base64DecOut[2];
-              volatile byte c3 = base64DecOut[3];
-              volatile byte c4 = base64DecOut[4];
-              volatile byte c5 = base64DecOut[5];
-              volatile byte c6 = base64DecOut[6];
-              volatile byte c7 = base64DecOut[7];
-              volatile byte c8 = base64DecOut[8];
-              volatile byte c9 = base64DecOut[1];
-              volatile byte c10 = base64DecOut[2];
-              volatile byte c11 = base64DecOut[3];
-              volatile byte c12 = base64DecOut[0];
-              volatile byte c13 = base64DecOut[1];
-              volatile byte c14 = base64DecOut[2];
-              volatile byte c15 = base64DecOut[3];
-              volatile byte c16 = base64DecOut[0];
-              volatile byte c17 = base64DecOut[1];
-              volatile byte c18 = base64DecOut[2];
-              volatile byte c19 = base64DecOut[3];
-              volatile byte c20 = base64DecOut[0];
-              volatile byte c21 = base64DecOut[1];
-              volatile byte c22 = base64DecOut[2];
-              volatile byte c23 = base64DecOut[3];
-              volatile byte c24 = base64DecOut[0];
-              volatile byte c54 = base64DecOut[54];
-              volatile byte c55 = base64DecOut[55];
-              volatile byte c56 = base64DecOut[56];
-              volatile byte c57 = base64DecOut[57];
-              volatile byte c58 = base64DecOut[58];
-              volatile byte c59 = base64DecOut[59];
-              volatile byte c60 = base64DecOut[60];
-              volatile byte c61 = base64DecOut[61];
-              volatile byte c62 = base64DecOut[62];
-              volatile byte c63 = base64DecOut[63];
-              volatile byte c64 = base64DecOut[64];
-            */
-             
+                                   
     // 2) SHA-256 encode the canonical resource (Here string of: Accountname and 'Tables')
     //    with base-64 deoded Azure Storage Account Key
     // HMAC SHA-256 encoding
     // https://techtutorialsx.com/2018/01/25/esp32-arduino-applying-the-hmac-sha-256-mechanism/
             
     // create SHA256Hash           
-    size_t sha256HashBufferLength = 32 + 1;
+    const size_t sha256HashBufferLength = 32 + 1;
     char sha256HashStr[sha256HashBufferLength] {0};
     int create_SHA256_result = createSHA256Hash(sha256HashStr, sha256HashBufferLength, toSign, strlen(toSign), base64DecOut, decodedKeyLen); 
-
-        /*
-        volatile byte b0 = sha256HashStr[0];
-        volatile byte b1 = sha256HashStr[1];
-        volatile byte b2 = sha256HashStr[2];
-        */
-             
+           
     // 3) Base-64 encode the SHA-265 encoded canonical resorce
 
-    size_t resultBase64Size = 32 + 20;
+    const size_t resultBase64Size = 32 + 20;
     char hmacResultBase64[resultBase64Size] {0};
     base64_encode(sha256HashStr, 32, hmacResultBase64, resultBase64Size);
             
-    char retBuf[_accountPtr->AccountName.length() + strlen(hmacResultBase64) + 20] {0};
-    //String authorizationHeader;
+    //char retBuf[_accountPtr->AccountName.length() + strlen(hmacResultBase64) + 20] {0};
+    char retBuf[MAX_ACCOUNTNAME_LENGTH + resultBase64Size + 20] {0};
+    
     if (useSharedKeyLite)
     {  
-        //pAutorizationHeader
-        
-
-
         //sprintf(pAutorizationHeader, "%s %s:%s", (char *)"SharedKeyLite", (char *)_accountPtr->AccountName.c_str(), hmacResultBase64);                       
         sprintf(retBuf, "%s %s:%s", (char *)"SharedKeyLite", (char *)_accountPtr->AccountName.c_str(), hmacResultBase64);               
         char * ptr = &pAutorizationHeader[0];
@@ -173,21 +117,13 @@ void TableClient::CreateTableAuthorizationHeader(char * content, char * canonica
         //return authorizationHeader;
     }
     else
-    {    
-        
-
-        //sprintf(pAutorizationHeader, "%s %s:%s", (char *)"SharedKey", (char *)_accountPtr->AccountName.c_str(), hmacResultBase64);                
+    {       
         sprintf(retBuf, "%s %s:%s", (char *)"SharedKey", (char *)_accountPtr->AccountName.c_str(), hmacResultBase64);                
         char * ptr = &pAutorizationHeader[0];
         for (size_t i = 0; i < strlen(retBuf); i++) {
             ptr[i] = retBuf[i];
         }
-        ptr[strlen(retBuf)] = '\0';
-        
-        
-        
-        //authorizationHeader = pAutorizationHeader;
-        //return authorizationHeader;
+        ptr[strlen(retBuf)] = '\0';      
     }        
  }
 
@@ -250,6 +186,13 @@ void TableClient::send()
 
 az_http_status_code TableClient::CreateTable(const char * tableName, ContType pContentType, AcceptType pAcceptType, ResponseType pResponseType, bool useSharedKeyLite)
 {
+   char * validTableName = (char *)tableName;
+   if (strlen(tableName) >  MAX_TABLENAME_LENGTH)
+   {
+      validTableName[MAX_TABLENAME_LENGTH] = '\0';
+   }
+   
+
   //OperationResultsClear();
             
   char x_ms_timestamp[35] {0};
@@ -274,12 +217,12 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
     const char * PROGMEM li4 = "xmlns=\"http://www.w3.org/2005/Atom\"> <id>http://";
           char * li5 = (char *)_accountPtr->AccountName.c_str();
     const char * PROGMEM li6 = ".table.core.windows.net/Tables('";
-          char * li7 = (char *)tableName;
+          char * li7 = (char *)validTableName;
     const char * PROGMEM li8 = "')</id><title /><updated>";
           char * li9 = (char *)timestampUTC.c_str();
     const char * PROGMEM li10 = "</updated><author><name/></author> ";
     const char * PROGMEM li11 = "<content type=\"application/xml\"><m:properties><d:TableName>";
-          char * li12 = (char *)tableName;
+          char * li12 = (char *)validTableName;
     const char * PROGMEM li13 = "</d:TableName></m:properties></content></entry>";
            
   char addBuffer[600];
@@ -288,14 +231,14 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
 
   az_span content_to_upload = az_span_create_from_str(addBuffer);
 
-   String urlPath = tableName;
+   String urlPath = validTableName;
    String TableEndPoint = _accountPtr->UriEndPointTable;
    String Host = _accountPtr->HostNameTable;
 
    String Url = TableEndPoint + "/Tables()";
 
 
-  char accountName_and_Tables[_accountPtr->AccountName.length() + 15];
+  char accountName_and_Tables[MAX_ACCOUNTNAME_LENGTH + 15];
   sprintf(accountName_and_Tables, "/%s/%s", (char *)_accountPtr->AccountName.c_str(), (char *)"Tables()");
             
   // RoSchmi todo -> eliminate
@@ -428,6 +371,13 @@ az_result const blob_upload_result
  az_http_status_code TableClient::InsertTableEntity(const char * tableName, TableEntity pEntity, ContType pContentType, AcceptType pAcceptType, ResponseType pResponseType, bool useSharedKeyLite)
 
 {
+  char * validTableName = (char *)tableName;
+   if (strlen(tableName) >  MAX_TABLENAME_LENGTH)
+   {
+      validTableName[MAX_TABLENAME_LENGTH] = '\0';
+   }
+
+
   //pEntity.PartitionKey._internal.size
     
     
@@ -457,19 +407,6 @@ az_result const blob_upload_result
   char timestamp[22] {0};
 
   GetDateHeader(sysTime.getTime(), timestamp, x_ms_timestamp);
-
-  // RoSchmi: for tests
-
-  //strcpy(x_ms_timestamp, "Wed, 21 Oct 2020 08:53:19 GMT");
-  //strcpy(x_ms_timestamp, "Wed, 21 Oct 2020 10:05:19 GMT");
-  //strcpy(x_ms_timestamp, "Wed, 21 Oct 2020 10:42:19 GMT");
-  //strcpy(x_ms_timestamp, "Wed, 21 Oct 2020 15:19:19 GMT");
-
-  //strcpy(timestamp, "2020-10-21T08:53:19");
-  //strcpy(timestamp, "2020-10-21T10:05:19");
-  //strcpy(timestamp, "2020-10-21T10:42:19");
-  //strcpy(timestamp, "2020-10-21T15:19:19");
-
 
   String timestampUTC = timestamp;
   timestampUTC += ".0000000Z";
@@ -519,12 +456,12 @@ az_span outPropertySpan = az_span_create(BufAddress, 300);
     const char * li4 = "xmlns=\"http://www.w3.org/2005/Atom\"> <id>http://";
           char * li5 = (char *)_accountPtr->AccountName.c_str();
     const char * li6 = ".table.core.windows.net/Tables('";
-          char * li7 = (char *)tableName;
+          char * li7 = (char *)validTableName;
     const char * li8 = "')</id><title /><updated>";
     char * li9 = (char *)timestampUTC.c_str();
     const char * li10 = "</updated><author><name/></author> ";
     const char * li11 = "<content type=\"application/xml\"><m:properties><d:TableName>";
-          char * li12 = (char *)tableName;
+          char * li12 = (char *)validTableName;
     const char * li13 = "</d:TableName></m:properties></content></entry>";
            
   char addBuffer[600];
@@ -557,7 +494,7 @@ az_span outPropertySpan = az_span_create(BufAddress, 300);
   const char * PROGMEM li4  = "xmlns=\"http://www.w3.org/2005/Atom\"> <id>http://";
         char * li5  = (char *)_accountPtr->AccountName.c_str();
   const char * PROGMEM li6  = ".table.core.windows.net/";
-        char *  li7  = (char *)tableName;
+        char *  li7  = (char *)validTableName;
   const char * PROGMEM li8  = "(PartitionKey='";
         char * li9  = (char *)PartitionKey; 
   const char * PROGMEM li10  = "',RowKey='";
@@ -652,7 +589,7 @@ az_span_copy_u8(remainder, 0);
              
        
 
-   String urlPath = tableName;
+   String urlPath = validTableName;
    String TableEndPoint = _accountPtr->UriEndPointTable;
    String Host = _accountPtr->HostNameTable;
 
@@ -670,9 +607,9 @@ az_span_copy_u8(remainder, 0);
     //resource = "/Tables()";
 
 
-char accountName_and_Tables[_accountPtr->AccountName.length() + 15];
- sprintf(accountName_and_Tables, "/%s/%s%s", (char *)_accountPtr->AccountName.c_str(), tableName, (const char *)"()");
- //sprintf(accountName_and_Tables, "/%s/%s", (char *)_accountPtr->AccountName.c_str(), tableName);
+char accountName_and_Tables[MAX_ACCOUNTNAME_LENGTH + MAX_TABLENAME_LENGTH + 10];
+ sprintf(accountName_and_Tables, "/%s/%s%s", (char *)_accountPtr->AccountName.c_str(), validTableName, (const char *)"()");
+ //sprintf(accountName_and_Tables, "/%s/%s", (char *)_accountPtr->AccountName.c_str(), validTableName);
  // RoSchmi todo -> eliminate
   char hushBuffer[5];
   int hashBufferLength = 5;
@@ -795,15 +732,19 @@ void appendCharArrayToSpan(az_span targetSpan, const size_t maxTargetLength, con
 
         
         void GetTableXml(EntityProperty EntityProperties[], size_t propertyCount, size_t maxPropStrLength, az_span outSpan, size_t *outSpanLength)
-        {
-          
-            char prop[maxPropStrLength + 10] {0};
-            //char prop[70 + 10] {0};
+        { 
+            char prop[(MAX_ENTITYPROPERTY_NAME_LENGTH * 2) + MAX_ENTITYPROPERTY_VALUE_LENGTH + MAX_ENTITYPROPERTY_TYPE_LENGTH + 20] {0};          
+            
+
+            
+            
+            
             size_t outLength = 0;
             for (size_t i = 0; i < propertyCount; i++)
             {
               // RoSchmi ToDo: define precondition      
-              strcpy(prop, EntityProperties[i].Prefix);
+              //strcpy(prop, EntityProperties[i].Prefix);
+              sprintf(prop, "<d:%s m:type=%c%s%c>%s</d:%s>", EntityProperties[i].Name, '"', EntityProperties[i].Type, '"', EntityProperties[i].Value, EntityProperties[i].Name);
               if ((prop != NULL) && (strlen(prop) > 0))
               {                 
                   outSpan = az_span_copy(outSpan, az_span_create_from_str((char *)prop));
@@ -813,31 +754,28 @@ void appendCharArrayToSpan(az_span targetSpan, const size_t maxTargetLength, con
             az_span_copy_u8(outSpan, 0);
             *outSpanLength = outLength;
 
+            //remainder = az_span_copy(startContent_to_upload, az_span_create_from_str((char *)li1));
+            //remainder = az_span_copy(remainder, az_span_create_from_str((char *)li2));
 
-            //String returnValue = (char *)resultBuff;
-            
+//uint8_t * remainBuf = (uint8_t *)0x20029000;
 
-            /*     
-            char resultBuff[maxPropStrLength * propertyCount] {0};
-            az_span result = AZ_SPAN_FROM_BUFFER(resultBuff);
+            /*
+            uint8_t * remainBuf[300];
 
-            outSpan
-
-            char prop[maxPropStrLength + 10] {0};
+            az_span remainder = AZ_SPAN_FROM_BUFFER(remainBuf);
+              size_t outLength = 0;
             for (size_t i = 0; i < propertyCount; i++)
             {
-              // RoSchmi ToDo: define precondition      
-              strcpy(prop, EntityProperties[i].Prefix);
-              if ((prop != NULL) && (strlen(prop) > 0))
-              {
-                  az_span propertySpan = az_span_create_from_str((char *)prop);
-                  result = az_span_copy(result, propertySpan);    
-              }           
+              remainder = az_span_copy(outSpan, az_span_create_from_str((char *)"<d:"));           
+              remainder = az_span_copy(remainder, az_span_create_from_str(EntityProperties[i].Name));
+              remainder = az_span_copy(remainder, az_span_create_from_str((char *)" m:type="));
+              remainder = az_span_copy(remainder, az_span_create_from_str((char *)'"'));
+              remainder = az_span_copy(remainder, az_span_create_from_str(EntityProperties[i].Type));
+              remainder = az_span_copy(remainder, az_span_create_from_str((char *)'"'));
+              remainder = az_span_copy(remainder, az_span_create_from_str((char *)">"));
+           
             }
-            az_span_copy_u8(result, 0);         
-            String returnValue = (char *)resultBuff;
             */
-            //return returnValue;
         }
         
         void GetDateHeader(DateTime time, char * stamp, char * x_ms_time)

@@ -8,7 +8,7 @@
  */
 CloudStorageAccount::CloudStorageAccount(String accountName, String accountKey, bool useHttps )
 {
-    AccountName = accountName;
+    AccountName = (accountName.length() <= MAX_ACCOUNTNAME_LENGTH) ? accountName : accountName.substring(0, MAX_ACCOUNTNAME_LENGTH);
     AccountKey = accountKey;
     char strData[accountName.length() + 30];
     const char * insert = (char *)useHttps ? "s" : "";

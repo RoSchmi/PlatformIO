@@ -5,6 +5,9 @@
 #ifndef _CLOUDSTORAGEACCOUNT_H_
 #define _CLOUDSTORAGEACCOUNT_H_
 
+#define MAX_ACCOUNTNAME_LENGTH 50
+#define ACCOUNT_KEY_LENGTH     88
+
 class CloudStorageAccount
 {
 public:
@@ -20,9 +23,6 @@ public:
     //String HostNameBlob;
     //String HostNameQueue;
     String HostNameTable;
-
-    
-
 };
 
 
