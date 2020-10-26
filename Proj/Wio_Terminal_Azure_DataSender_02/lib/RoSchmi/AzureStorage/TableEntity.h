@@ -26,7 +26,7 @@ class TableEntity
         az_span     PartitionKey; 
         az_span     RowKey;
         TableEntity();
-        TableEntity(az_span partitionKey, az_span rowKey);
+        TableEntity(az_span partitionKey, az_span rowKey, az_span sampleTime);
         //~TableEntity();
 
 };

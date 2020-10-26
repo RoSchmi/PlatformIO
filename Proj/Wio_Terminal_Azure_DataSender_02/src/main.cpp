@@ -224,9 +224,9 @@ void setup() {
       lcd_log_line(buf);
     }
     */
-   
-    //CloudStorageAccount myCloudStorageAccount(AZURE_CONFIG_ACCOUNT_NAME, AZURE_CONFIG_ACCOUNT_KEY, true);
-    CloudStorageAccount myCloudStorageAccount(AZURE_CONFIG_ACCOUNT_NAME, AZURE_CONFIG_ACCOUNT_KEY, false);
+     
+    CloudStorageAccount myCloudStorageAccount(AZURE_CONFIG_ACCOUNT_NAME, AZURE_CONFIG_ACCOUNT_KEY, true);
+    //CloudStorageAccount myCloudStorageAccount(AZURE_CONFIG_ACCOUNT_NAME, AZURE_CONFIG_ACCOUNT_KEY, false);
     
     CloudStorageAccount * myCloudStorageAccountPtr = &myCloudStorageAccount;
 
@@ -293,7 +293,7 @@ TableClient table(myCloudStorageAccountPtr, myX509Certificate, httpPtr);
 
 const char * tableName = "AnalogTestValues2020";
 
-// RoSchmi do not delete
+// RoSchmi: do not delete
 //az_http_status_code theResult = createTable(myCloudStorageAccountPtr, myX509Certificate, tableName);
 
 char * sampleValue_1 = (char *)"17.1";
@@ -303,6 +303,7 @@ char * sampleValue_4 = (char *)"17.4";
 
 //double sampleValues[4] {17.1, 17.2, 17.3, 17.4};
   
+//az_http_status_code theResult = createTable(myCloudStorageAccountPtr, myX509Certificate, tableName);
 
 now = sysTime.getTime();
 
@@ -315,6 +316,7 @@ sprintf(TimeOffsetUTCString, " %c%03i", sign, timeZoneOffsetUTC);
    uint32_t * ptr_one;
    uint32_t * last_ptr_one;
    // This code snippet was used to get the addresses of the heap
+   
    /*
    for (volatile int i = 0; 1 < 100000; i++)
    {
@@ -339,15 +341,19 @@ sprintf(TimeOffsetUTCString, " %c%03i", sign, timeZoneOffsetUTC);
      } 
    }
    */
+   
   // Fills heap from 0x20029000 - 0x2002FE00 with pattern AA55
   // So you can see at breakpoints how much of heap was used
-  ptr_one = (uint32_t *)0x20029000;
+
+  /*
+  ptr_one = (uint32_t *)0x20028F80;
   while (ptr_one < (uint32_t *)0x2002fe00)
   {
     *ptr_one = (uint32_t)0xAA55AA55;
      ptr_one++;
   }
-
+  */
+  
 
 
 
@@ -360,16 +366,31 @@ sprintf(sampleTime, "%02i/%02i/%04i %02i:%02i:%02i%s",now.month(), now.day(), no
 //string sampleTime = actDate.Month.ToString("D2") + "/" + actDate.Day.ToString("D2") + "/" + actDate.Year + " " + actDate.Hour.ToString("D2") + ":" + actDate.Minute.ToString("D2") + ":" + actDate.Second.ToString("D2") + " " + TimeOffsetUTCString;
   
   // RoSchmi: for tests set sampleTime
-  strcpy(sampleTime, "10/21/2020 10:05:19 +060");
+  //strcpy(sampleTime, "10/21/2020 10:05:19 +060");
+
+  //
+  
 
   size_t propertyCount = 5;
-  EntityProperty AnalogPropertiesArray[propertyCount]; // = {{.Prefix = "H1"}, {.Prefix = "H1"}, {.Prefix = "H1"}, {.Prefix = "H1"}, {.Prefix = "H1"} };
+
+  
+
+  //EntityProperty AnalogPropertiesArray[propertyCount]; // = {{.Prefix = "H1"}, {.Prefix = "H1"}, {.Prefix = "H1"}, {.Prefix = "H1"}, {.Prefix = "H1"} };
+
+  
+  
+  EntityProperty AnalogPropertiesArray[5];
+  
+
   AnalogPropertiesArray[0] = (EntityProperty)TableEntityProperty((char *)"SampleTime", (char *) sampleTime, (char *)"Edm.String");
   AnalogPropertiesArray[1] = (EntityProperty)TableEntityProperty((char *)"T_1", sampleValue_1, (char *)"Edm.String");
   AnalogPropertiesArray[2] = (EntityProperty)TableEntityProperty((char *)"T_2", sampleValue_2, (char *)"Edm.String");
   AnalogPropertiesArray[3] = (EntityProperty)TableEntityProperty((char *)"T_3", sampleValue_3, (char *)"Edm.String");
   AnalogPropertiesArray[4] = (EntityProperty)TableEntityProperty((char *)"T_4", sampleValue_4, (char *)"Edm.String");
+  
+  //az_http_status_code theResult = createTable(myCloudStorageAccountPtr, myX509Certificate, tableName);
 
+  size_t theSize = sizeof(AnalogPropertiesArray);  
   char * analogTablePartPrefix = (char *)"Y2_";
   bool augmentPartitionKey = true;
   
@@ -385,8 +406,8 @@ sprintf(sampleTime, "%02i/%02i/%04i %02i:%02i:%02i%s",now.month(), now.day(), no
   makeRowKey(now, rowKey, &rowKeyLength);
   rowKey = az_span_slice(rowKey, 0, rowKeyLength);
 
-  // RoSchmi: for tests
-  rowKey = AZ_SPAN_LITERAL_FROM_STR("79800210103742");
+  // RoSchmi: for tests to set a fixed rowkey
+  //rowKey = AZ_SPAN_LITERAL_FROM_STR("79800210103742");
 
   
 
@@ -394,15 +415,23 @@ sprintf(sampleTime, "%02i/%02i/%04i %02i:%02i:%02i%s",now.month(), now.day(), no
   now = sysTime.getTime();
   //DateTime actDate = DateTime.Now;
 
+  
+
 
 //az_span rowKey = az_span_create_from_str((char *)makeRowKey(now).c_str());
 // az_span rowKey = makeRowKey(now);
 
-  AnalogTableEntity analogTableEntity(partitionKey, rowKey, AnalogPropertiesArray, propertyCount);
+  AnalogTableEntity analogTableEntity(partitionKey, rowKey, az_span_create_from_str((char *)sampleTime),  AnalogPropertiesArray, propertyCount);
 
   //az_http_status_code theResult2 = insertTableEntity(myCloudStorageAccountPtr, myX509Certificate, tableName);
 
-  char EtagBuffer[100];
+  
+
+
+  char EtagBuffer[5] {0};
+
+  //az_http_status_code theResult = createTable(myCloudStorageAccountPtr, myX509Certificate, tableName);
+
   az_http_status_code result3 = insertTableEntity(myCloudStorageAccountPtr, myX509Certificate, tableName, analogTableEntity, (char *)EtagBuffer);
 
   //AnalogTableEntity analogTableEntity;
@@ -410,8 +439,7 @@ sprintf(sampleTime, "%02i/%02i/%04i %02i:%02i:%02i%s",now.month(), now.day(), no
 
   //az_span prefixRetrieve = AnalogPropertiesArray[0].Prefix;
 
-  char retBuffer[100];
-  sprintf(retBuffer, "%s", AnalogPropertiesArray[0].Prefix);
+  
 
   //az_span_to_str(retBuffer, 90, prefixRetrieve);
   
@@ -593,7 +621,7 @@ az_http_status_code createTable(CloudStorageAccount *pAccountPtr, X509Certificat
             if (attachFiddler)
             { table.attachFiddler(true, fiddlerIPAddress, fiddlerPort); }
             */
-az_http_status_code resultCode = table.CreateTable(pTableName, contApplicationIatomIxml, acceptApplicationIjson, dont_returnContent);
+az_http_status_code resultCode = table.CreateTable(pTableName, contApplicationIatomIxml, acceptApplicationIatomIxml, returnContent);
 
 
         //    HttpStatusCode resultCode = table.CreateTable(pTableName, TableClient.ContType.applicationIatomIxml, TableClient.AcceptType.applicationIjson, TableClient.ResponseType.dont_returnContent, useSharedKeyLite: false);

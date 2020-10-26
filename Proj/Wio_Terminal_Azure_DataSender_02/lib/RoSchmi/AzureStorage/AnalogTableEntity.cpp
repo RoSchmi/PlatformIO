@@ -10,14 +10,14 @@
 
 
         // Define the PK and RK
-        AnalogTableEntity::AnalogTableEntity(az_span partitionKey, az_span rowKey, EntityProperty *pProperties, size_t propertyCount)
-            : TableEntity(partitionKey, rowKey)
+        AnalogTableEntity::AnalogTableEntity(az_span partitionKey, az_span rowKey, az_span sampleTime, EntityProperty *pProperties, size_t propertyCount)
+            : TableEntity(partitionKey, rowKey, sampleTime)
         {
             Properties = pProperties;    // store the ArrayList
 
             PropertyCount = propertyCount;
 
-            SampleTime = az_span_create_from_str(pProperties[0].Value);
+           // SampleTime = az_span_create_from_str(pProperties[0].Value);
                           
             PropertyClass myProperties;           
             myProperties.PartitionKey = partitionKey;           

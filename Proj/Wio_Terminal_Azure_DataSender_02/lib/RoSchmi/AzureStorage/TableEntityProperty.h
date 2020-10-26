@@ -15,10 +15,10 @@ typedef struct EntityProperty
 */
 struct EntityProperty
 {
-    char Prefix[100];
-    char Name[50];
-    char Value[50];
-    char Type[15];
+    char Prefix[80];
+    char Name[25];
+    char Value[5];
+    char Type[13];
 };
 
 EntityProperty TableEntityProperty(char * Name, char * Value, char * Type);

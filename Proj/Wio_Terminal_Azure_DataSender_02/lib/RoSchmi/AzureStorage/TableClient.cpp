@@ -36,6 +36,8 @@ static SysTime sysTime;
 // forward declarations
 void GetDateHeader(DateTime, char * stamp, char * x_ms_time);
 
+void appendCharArrayToSpan(az_span targetSpan, const size_t maxTargetLength, const size_t startIndex, size_t *outEndIndex, const char * stringToAppend);
+
 az_span  getContentType_az_span(ContType pContentType);
 az_span  getResponseType_az_span(ResponseType pResponseType);
 az_span  getAcceptType_az_span(AcceptType pAcceptType);
@@ -255,11 +257,6 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
 
   GetDateHeader(sysTime.getTime(), timestamp, x_ms_timestamp);
 
-  
-
-
-  
-
   String timestampUTC = timestamp;
   timestampUTC += ".0000000Z";
 
@@ -269,22 +266,21 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
 
   
 
-
   String HttpVerb = "POST";
-
-    const char * li1 = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>";
-    const char * li2 = "<entry xmlns:d=\"http://schemas.microsoft.com/ado/2007/08/dataservices\"  ";
-    const char * li3 = "xmlns:m=\"http://schemas.microsoft.com/ado/2007/08/dataservices/metadata\" ";
-    const char * li4 = "xmlns=\"http://www.w3.org/2005/Atom\"> <id>http://";          
+    
+    const char * PROGMEM li1 = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>";
+    const char * PROGMEM li2 = "<entry xmlns:d=\"http://schemas.microsoft.com/ado/2007/08/dataservices\"  ";
+    const char * PROGMEM li3 = "xmlns:m=\"http://schemas.microsoft.com/ado/2007/08/dataservices/metadata\" ";
+    const char * PROGMEM li4 = "xmlns=\"http://www.w3.org/2005/Atom\"> <id>http://";
           char * li5 = (char *)_accountPtr->AccountName.c_str();
-    const char * li6 = ".table.core.windows.net/Tables('";
+    const char * PROGMEM li6 = ".table.core.windows.net/Tables('";
           char * li7 = (char *)tableName;
-    const char * li8 = "')</id><title /><updated>";
-    char * li9 = (char *)timestampUTC.c_str();
-    const char * li10 = "</updated><author><name/></author> ";
-    const char * li11 = "<content type=\"application/xml\"><m:properties><d:TableName>";
+    const char * PROGMEM li8 = "')</id><title /><updated>";
+          char * li9 = (char *)timestampUTC.c_str();
+    const char * PROGMEM li10 = "</updated><author><name/></author> ";
+    const char * PROGMEM li11 = "<content type=\"application/xml\"><m:properties><d:TableName>";
           char * li12 = (char *)tableName;
-    const char * li13 = "</d:TableName></m:properties></content></entry>";
+    const char * PROGMEM li13 = "</d:TableName></m:properties></content></entry>";
            
   char addBuffer[600];
   sprintf(addBuffer, "%s%s%s%s%s%s%s%s%s%s%s%s%s", li1, li2, li3, li4,li5, li6, li7, li8, li9, li10,li11, li12, li13);
@@ -433,17 +429,25 @@ az_result const blob_upload_result
 
 {
   //pEntity.PartitionKey._internal.size
-    char PartitionKey[pEntity.PartitionKey._internal.size + 2] {0};
-    az_span_to_str(PartitionKey, sizeof(PartitionKey), pEntity.PartitionKey);
+    
+    
+    //char PartitionKey[pEntity.PartitionKey._internal.size + 2] {0};
+    char PartitionKey[15] {0};
+    az_span_to_str(PartitionKey, sizeof(PartitionKey) - 1, pEntity.PartitionKey);
 
-    char RowKey[pEntity.RowKey._internal.size + 2] {0};
+    
+    //char RowKey[pEntity.RowKey._internal.size + 2] {0};
+    char RowKey[16] {0};
     az_span_to_str(RowKey, sizeof(RowKey), pEntity.RowKey);
 
-    char SampleTime[pEntity.SampleTime._internal.size + 2] {0};
+    
+    //char SampleTime[pEntity.SampleTime._internal.size + 2] {0};
+    char SampleTime[26] {0};
     az_span_to_str(SampleTime, sizeof(SampleTime), pEntity.SampleTime);
     
-    EntityProperty * Properties;
-    Properties = pEntity.Properties;
+    
+    //EntityProperty * Properties;
+    //Properties = pEntity.Properties;
     
     
     
@@ -459,11 +463,12 @@ az_result const blob_upload_result
   //strcpy(x_ms_timestamp, "Wed, 21 Oct 2020 08:53:19 GMT");
   //strcpy(x_ms_timestamp, "Wed, 21 Oct 2020 10:05:19 GMT");
   //strcpy(x_ms_timestamp, "Wed, 21 Oct 2020 10:42:19 GMT");
-  strcpy(x_ms_timestamp, "Wed, 21 Oct 2020 15:19:19 GMT");
+  //strcpy(x_ms_timestamp, "Wed, 21 Oct 2020 15:19:19 GMT");
+
   //strcpy(timestamp, "2020-10-21T08:53:19");
   //strcpy(timestamp, "2020-10-21T10:05:19");
   //strcpy(timestamp, "2020-10-21T10:42:19");
-  strcpy(timestamp, "2020-10-21T15:19:19");
+  //strcpy(timestamp, "2020-10-21T15:19:19");
 
 
   String timestampUTC = timestamp;
@@ -473,55 +478,196 @@ az_result const blob_upload_result
   az_span responseTypeAzSpan = getResponseType_az_span(pResponseType);
   az_span acceptTypeAzSpan = getAcceptType_az_span(pAcceptType);
 
-   size_t maxPropStrLength = 70; // max size of a property string
-   size_t outBytesWritten = 0;
-   char  propBuf[maxPropStrLength * pEntity.PropertyCount];
-   az_span outPropertySpan = AZ_SPAN_FROM_BUFFER(propBuf);
    
+   const size_t maxPropStrLength = 70; // max size of a property string
+   size_t outBytesWritten = 0;
+   
+
+//   char  propBuf[300];
+//   az_span outPropertySpan = AZ_SPAN_FROM_BUFFER(propBuf);
+
+// To save memory allocate to address 0x20029000
+uint8_t * BufAddress = (uint8_t *)0x20029000;
+az_span outPropertySpan = az_span_create(BufAddress, 300);
+
    GetTableXml(pEntity.Properties, pEntity.PropertyCount, maxPropStrLength, outPropertySpan, &outBytesWritten);
+   
 
    char * _properties = (char *)az_span_ptr(outPropertySpan);
 
+   /*
+   uint8_t newBuffer[100];
+   uint8_t * BufAddress = (uint8_t *)newBuffer;
+   BufAddress = (uint8_t *)0x20029000;
+   *BufAddress = 0x51;
+   az_span newSpan = az_span_create((uint8_t *)newBuffer, 100);
+   */
+
+   //char * _properties = (char *)"<Hello></Hello>";
+  
    //String props = _properties;
+   
 
    String HttpVerb = "POST";
    
+  //**************************************************************
+  /*
 
-  const char * li1 = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>";                  
-  const char * li2 = "<entry xmlns:d=\"http://schemas.microsoft.com/ado/2007/08/dataservices\"  ";                 
-  const char * li3  = "xmlns:m=\"http://schemas.microsoft.com/ado/2007/08/dataservices/metadata\" ";
-  const char * li4  = "xmlns=\"http://www.w3.org/2005/Atom\"> <id>http://";
-        char * li5  = (char *)_accountPtr->AccountName.c_str();
-  const char * li6  = ".table.core.windows.net/";
-        char * li7  = (char *)tableName;
-  const char * li8  = "(PartitionKey='";
-        char * li9  = (char *)PartitionKey; 
-  const char * li10  = "',RowKey='";
-        char * li11  = (char *)RowKey; 
-  const char * li12  = "')</id><title /><updated>";
-        char * li13  = (char *)x_ms_timestamp;
-  const char * li14  = "</updated><author><name /></author><content type=\"application/atom+xml\">";
-  const char * li15  = "<m:properties><d:PartitionKey>";
-        char * li16  = (char *)PartitionKey;
-  const char * li17  =  "</d:PartitionKey><d:RowKey>";
-        char * li18  = (char *)RowKey;
-  const char * li19  = "</d:RowKey>";  
-        char * li20  = _properties;
-  const char * li21  = "</m:properties></content></entry>";
+    const char * li1 = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>";
+    const char * li2 = "<entry xmlns:d=\"http://schemas.microsoft.com/ado/2007/08/dataservices\"  ";
+    const char * li3 = "xmlns:m=\"http://schemas.microsoft.com/ado/2007/08/dataservices/metadata\" ";
+    const char * li4 = "xmlns=\"http://www.w3.org/2005/Atom\"> <id>http://";
+          char * li5 = (char *)_accountPtr->AccountName.c_str();
+    const char * li6 = ".table.core.windows.net/Tables('";
+          char * li7 = (char *)tableName;
+    const char * li8 = "')</id><title /><updated>";
+    char * li9 = (char *)timestampUTC.c_str();
+    const char * li10 = "</updated><author><name/></author> ";
+    const char * li11 = "<content type=\"application/xml\"><m:properties><d:TableName>";
+          char * li12 = (char *)tableName;
+    const char * li13 = "</d:TableName></m:properties></content></entry>";
+           
+  char addBuffer[600];
+  sprintf(addBuffer, "%s%s%s%s%s%s%s%s%s%s%s%s%s", li1, li2, li3, li4,li5, li6, li7, li8, li9, li10,li11, li12, li13);
+  volatile size_t theLength = strlen(addBuffer);
 
-  char addBuffer[900];
-  sprintf(addBuffer, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", li1, li2, li3, li4,li5, li6, li7, li8, li9, li10,li11, li12, li13, li14, li15, li16, li17, li18, li19, li20, li21, (char *)"    "); 
-
-  volatile size_t buffLength = strlen(addBuffer);
-
-  az_span content_to_upload = az_span_create_from_str(addBuffer);   
-             
-         //   , _account.AccountName, timestamp, pEntity.PartitionKey, pEntity.RowKey, GetTableXml(pEntity.Properties), tableName);
+  az_span content_to_upload = az_span_create_from_str(addBuffer);
 
    String urlPath = tableName;
    String TableEndPoint = _accountPtr->UriEndPointTable;
    String Host = _accountPtr->HostNameTable;
+
+   String Url = TableEndPoint + "/Tables()";
+
+*/
+//**************************************************************
+
+
+
+
+
+
+//*******************************************************
+
+
+  
+  const char * PROGMEM li1 = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>";
+  const char * PROGMEM li2 = "<entry xmlns:d=\"http://schemas.microsoft.com/ado/2007/08/dataservices\"  ";
+  const char * PROGMEM li3 = "xmlns:m=\"http://schemas.microsoft.com/ado/2007/08/dataservices/metadata\" ";    
+  const char * PROGMEM li4  = "xmlns=\"http://www.w3.org/2005/Atom\"> <id>http://";
+        char * li5  = (char *)_accountPtr->AccountName.c_str();
+  const char * PROGMEM li6  = ".table.core.windows.net/";
+        char *  li7  = (char *)tableName;
+  const char * PROGMEM li8  = "(PartitionKey='";
+        char * li9  = (char *)PartitionKey; 
+  const char * PROGMEM li10  = "',RowKey='";
+        char * li11  = (char *)RowKey; 
+  const char * PROGMEM li12  = "')</id><title /><updated>";
+        char * li13  = (char *)x_ms_timestamp;
+  const char * PROGMEM li14  = "</updated><author><name /></author><content type=\"application/atom+xml\">";
+  const char * PROGMEM li15  = "<m:properties><d:PartitionKey>";
+        char * li16  = (char *)PartitionKey;
+  const char * PROGMEM li17  =  "</d:PartitionKey><d:RowKey>";
+        char * li18  = (char *)RowKey;
+  const char * PROGMEM li19  = "</d:RowKey>";  
+        char * li20  = _properties;
+  const char * PROGMEM li21  = "</m:properties></content></entry>";
+
+  //char addBuffer[900];
+   uint8_t addBuffer[1];
+   uint8_t * addBufAddress = (uint8_t *)addBuffer;
+   addBufAddress = (uint8_t *)0x20029200;
+
+   az_span startContent_to_upload = az_span_create(addBufAddress, 900);
+
+   size_t outIndex = 0;
+
+   uint8_t remainderBuffer[1];
+   uint8_t * remainderBufAddress = (uint8_t *)remainderBuffer;
+   remainderBufAddress = (uint8_t *)0x20029700;
+   az_span remainder = az_span_create(remainderBufAddress, 900);
+
+   
+            remainder = az_span_copy(startContent_to_upload, az_span_create_from_str((char *)li1));
+            remainder = az_span_copy(remainder, az_span_create_from_str((char *)li2));
+            remainder = az_span_copy(remainder, az_span_create_from_str((char *)li3));
+            remainder = az_span_copy(remainder, az_span_create_from_str((char *)li4));
+            remainder = az_span_copy(remainder, az_span_create_from_str((char *)li5));
+            remainder = az_span_copy(remainder, az_span_create_from_str((char *)li6));
+            remainder = az_span_copy(remainder, az_span_create_from_str((char *)li7));
+            remainder = az_span_copy(remainder, az_span_create_from_str((char *)li8));
+            remainder = az_span_copy(remainder, az_span_create_from_str((char *)li9));
+            remainder = az_span_copy(remainder, az_span_create_from_str((char *)li10));
+            remainder = az_span_copy(remainder, az_span_create_from_str((char *)li11));
+            remainder = az_span_copy(remainder, az_span_create_from_str((char *)li12));
+            remainder = az_span_copy(remainder, az_span_create_from_str((char *)li13));
+            remainder = az_span_copy(remainder, az_span_create_from_str((char *)li14));
+            remainder = az_span_copy(remainder, az_span_create_from_str((char *)li15));
+            remainder = az_span_copy(remainder, az_span_create_from_str((char *)li16));
+            remainder = az_span_copy(remainder, az_span_create_from_str((char *)li17));
+            remainder = az_span_copy(remainder, az_span_create_from_str((char *)li18));
+            remainder = az_span_copy(remainder, az_span_create_from_str((char *)li19));
+            remainder = az_span_copy(remainder, az_span_create_from_str((char *)li20));
+            remainder = az_span_copy(remainder, az_span_create_from_str((char *)li21));
+    
+az_span_copy_u8(remainder, 0);
+
+   /*
+   
+   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li1);
+   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li2);
+   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li3);
+   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li4);
+   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li5);
+   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li6);
+   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li7);
+   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li8);
+   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li9);
+   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li10);
+   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li11);
+   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li12);
+   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li13);
+   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li14);
+   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li15);
+   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li16);
+   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li17);
+   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li18);
+   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li19);
+   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li20);
+   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li21);
+   */
+
+   //char * contToUpl = (char *)addBufAddress;
+
+   //String toUpload = contToUpl;
+
+  //char addBuffer[650];
+  //char addBuffer[700];
+
+  //sprintf(addBuffer, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", li1, li2, li3, li4,li5, li6, li7, li8, li9, li10,li11, li12, li13, li14, li15, li16, li17, li18, li19, li20, li21); 
+  //sprintf(addBuffer, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", li1, li2, li3, li4,li5, li6, li7, li8, li9, li10,li11, li12, li13, li14, li15, li16, li17, li18, li19, li20, li21, (char *)"    ");
+  //volatile size_t buffLength = strlen(addBuffer);
+
+  az_span content_to_upload = az_span_create_from_str((char *)addBufAddress);   
+             
+       
+
+   String urlPath = tableName;
+   String TableEndPoint = _accountPtr->UriEndPointTable;
+   String Host = _accountPtr->HostNameTable;
+
    String Url = TableEndPoint + "/" + urlPath + "()";
+   
+   
+
+
+   //**********************************************************
+
+   //RoSchmi: For tests
+   //String Url = TableEndPoint + "/Tables()";
+
+
+    //resource = "/Tables()";
 
 
 char accountName_and_Tables[_accountPtr->AccountName.length() + 15];
@@ -534,13 +680,13 @@ char accountName_and_Tables[_accountPtr->AccountName.length() + 15];
   char md5Buffer[32 +1] {0};
 
   //char authorizationHeaderBuffer[strlen(_accountPtr->AccountName.c_str()) + 60] {0};
-  char authorizationHeaderBuffer[100] {0};
+  char authorizationHeaderBuffer[65] {0};
 
-  CreateTableAuthorizationHeader((char *)addBuffer, accountName_and_Tables, (const char *)x_ms_timestamp, HttpVerb, contentTypeAzSpan, md5Buffer, authorizationHeaderBuffer, hushBuffer, hashBufferLength, useSharedKeyLite = false);
+  CreateTableAuthorizationHeader((char *)addBufAddress, accountName_and_Tables, (const char *)x_ms_timestamp, HttpVerb, contentTypeAzSpan, md5Buffer, authorizationHeaderBuffer, hushBuffer, hashBufferLength, useSharedKeyLite = false);
 
-  String authorizationHeader = String((char *)authorizationHeaderBuffer);
+  //String authorizationHeader = String((char *)authorizationHeaderBuffer);
   
-            
+  volatile int initResult = 55;         
             az_storage_tables_client tabClient;        
             az_storage_tables_client_options options = az_storage_tables_client_options_default();
                         
@@ -549,12 +695,17 @@ char accountName_and_Tables[_accountPtr->AccountName.length() + 15];
       != AZ_OK)
   {
       volatile int dummy643 = 1;
-    
+      initResult = -1;
   }
+  else
+  {
+    initResult = 0;
+  }
+  
 
 volatile az_span theEndpoint =  tabClient._internal.endpoint;
 
-   uint8_t response_buffer[200] = { 0 };
+   uint8_t response_buffer[2] = { 0 };
   az_http_response http_response;
   if (az_result_failed(az_http_response_init(&http_response, AZ_SPAN_FROM_BUFFER(response_buffer))))
   {
@@ -599,7 +750,7 @@ volatile az_span theEndpoint =  tabClient._internal.endpoint;
   //az_result const blob_upload_result
   //    = az_storage_tables_upload(&tabClient, content_to_upload, az_span_create_from_str(md5Buffer), az_span_create_from_str((char *)(authorizationHeader.c_str())), az_span_create_from_str((char *)(x_ms_timestamp.c_str())),  &uploadOptions, &http_response);
 az_result const blob_upload_result
-      = az_storage_tables_upload(&tabClient, content_to_upload, az_span_create_from_str(md5Buffer), az_span_create_from_str((char *)authorizationHeader.c_str()), az_span_create_from_str((char *)x_ms_timestamp), &uploadOptions, &http_response);
+      = az_storage_tables_upload(&tabClient, content_to_upload, az_span_create_from_str(md5Buffer), az_span_create_from_str((char *)authorizationHeaderBuffer), az_span_create_from_str((char *)x_ms_timestamp), &uploadOptions, &http_response);
 
     //tabClient._internal.options
    //tabClient._internal.credential->_internal.apply_credential_policy
@@ -610,7 +761,28 @@ az_result const blob_upload_result
   return AZ_HTTP_STATUS_CODE_CREATED;
 }      
 
+void appendCharArrayToSpan(az_span targetSpan, const size_t maxTargetLength, const size_t startIndex, size_t *outEndIndex, const char * stringToAppend)
+{
+    //uint8_t* ptr = az_span_ptr(targetSpan);
+    //uint32_t ptr = (uint32_t)targetSpan._internal.ptr;
+    
+    //uint8_t destBuffer[targetSpan._internal.size];
+    //az_span destination = AZ_SPAN_FROM_BUFFER(destBuffer);
 
+    uint8_t * lastPtr = targetSpan._internal.ptr;
+    int32_t lastSize = targetSpan._internal.size;
+    az_span_copy(targetSpan, az_span_create_from_str((char *)stringToAppend));
+    targetSpan = (az_span){ ._internal = { .ptr = lastPtr + strlen(stringToAppend), .size = lastSize - (int32_t)strlen(stringToAppend) } };
+    
+    //targetSpan._internal.ptr += strlen(stringToAppend);
+    //targetSpan._internal.size -= strlen(stringToAppend);
+    //return (az_span){ ._internal = { .ptr = ptr, .size = size } };
+    volatile int dummy34 = 1;
+    //targetSpan = destination;
+    //targetSpan._internal.ptr += strlen(stringToAppend);
+    //az_span_copy_u8(targetSpan, 0);
+    //*outEndIndex = startIndex + 
+}
 
        void OperationResultsClear()
         {
@@ -626,6 +798,7 @@ az_result const blob_upload_result
         {
           
             char prop[maxPropStrLength + 10] {0};
+            //char prop[70 + 10] {0};
             size_t outLength = 0;
             for (size_t i = 0; i < propertyCount; i++)
             {

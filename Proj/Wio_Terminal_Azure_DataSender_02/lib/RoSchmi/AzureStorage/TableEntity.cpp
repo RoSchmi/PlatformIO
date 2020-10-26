@@ -10,10 +10,11 @@
 
         TableEntity::TableEntity() { }
 
-        TableEntity::TableEntity(az_span partitionKey, az_span rowKey)
+        TableEntity::TableEntity(az_span partitionKey, az_span rowKey, az_span sampleTime)
         {   
             PartitionKey = partitionKey;
             RowKey = rowKey;
+            SampleTime = sampleTime;
         }
         
         //az_span JsonString = az_span_create_from_str((char *)"");

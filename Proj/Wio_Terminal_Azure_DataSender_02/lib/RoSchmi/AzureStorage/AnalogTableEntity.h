@@ -9,7 +9,7 @@ class AnalogTableEntity : public TableEntity
 
     public:
         AnalogTableEntity();
-        AnalogTableEntity(az_span partitionKey, az_span rowKey, EntityProperty[], size_t PropertyCount);
+        AnalogTableEntity(az_span partitionKey, az_span rowKey, az_span sampleTime, EntityProperty[], size_t PropertyCount);
               
         class PropertyClass {
            public:

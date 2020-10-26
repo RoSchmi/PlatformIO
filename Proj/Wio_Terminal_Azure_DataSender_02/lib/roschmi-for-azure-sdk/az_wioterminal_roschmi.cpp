@@ -69,52 +69,16 @@ az_http_client_send_request(az_http_request const* request, az_http_response* re
   String requUrlString = String(requUrlStr);
   */
 
+/*
 uint8_t headers_buffer[300] {0};
   az_span headers_span = AZ_SPAN_FROM_BUFFER(headers_buffer);
-  //az_span separator = AZ_SPAN_LITERAL_FROM_STR("**");
-
-
-
-
+  
 az_result myResult = dev_az_http_client_build_headers(request, headers_span);
 
 char* theHeader_str = (char*) az_span_ptr(headers_span);
 volatile size_t headerSize = strlen(theHeader_str);
-   
-  /* 
-  // String theUrl =  (char *)az_span_ptr(requUrl); 
-  // String thePath = "/";  
-
-   String theUrl = "jsonplaceholder.typicode.com";
-   String thePath = "/posts?userId=1";       
-    
-    //deviceHttp->begin((char *)az_span_ptr(requUrl), (uint16_t)443, "/", _caCertificate);
-    //deviceHttp->begin((char *)az_span_ptr(requUrl), (uint16_t)80, "/", _caCertificate);
-    deviceHttp->begin(theUrl, (uint16_t)443, thePath, _caCertificate);
-    int httpCode = deviceHttp->GET();
-    delay(100);
-    //((char *)az_span_ptr( request->_internal.body));
-    if (httpCode > 0) { //Check for the returning code 
-      String payload = deviceHttp->getString();
-      int length = payload.length();
-      int indexCtr = 0;
-      int pageWidth = 30;
-      Serial.println(httpCode);
-      delay(2000);
-      while (indexCtr < length)
-      {
-        indexCtr += pageWidth;
-      } 
-       Serial.println(payload);
-    }
-    else {
-     // Serial.println("Error on HTTP request");
-      volatile int dummy2 = 1;
-      dummy2++;
-    }
-    */
-
-    
+*/
+     
     //String theUrl = "jsonplaceholder.typicode.com";
     //String thePath = "/posts?userId=1";
 
@@ -142,6 +106,9 @@ volatile size_t headerSize = strlen(theHeader_str);
     String host = foundSlash != -1 ? urlString.substring(0, foundSlash) : urlString;
     String resource = foundSlash != -1 ? urlString.substring(foundSlash) : "";
     uint16_t port = protocol == "http" ? 80 : 443;
+
+    //RoSchmi: For tests
+    //resource = "/Tables()";
     
     if (port == 80)
     {
@@ -151,8 +118,11 @@ volatile size_t headerSize = strlen(theHeader_str);
     {
       deviceHttp->begin(host, port, resource, _caCertificate);
     }
-    deviceHttp->setReuse(false);
-    deviceHttp->setUserAgent("RsNetmfHttpClient");
+    //deviceHttp->setReuse(false);
+    //deviceHttp->setConnectTimeout(2000);
+
+
+    //deviceHttp->setUserAgent("RsNetmfHttpClient");
     
     
     //deviceHttp->begin(theUrl, (uint16_t)80, thePath);
@@ -184,9 +154,6 @@ volatile size_t headerSize = strlen(theHeader_str);
     }
     //request->_internal.body
 
-    
-    
-    
     //size_t bodyLength = az_span_size(request->_internal.body);
 
     //az_span body = request->_internal.body;
@@ -201,9 +168,9 @@ volatile size_t headerSize = strlen(theHeader_str);
     //theBody[bodySize + 1] = '\n';
 
 
-
-    String bodyString = (char *)theBody;
-
+    
+   // String bodyString = (char *)theBody;
+    /*
     String bodyString_01 = bodyString.substring(0, 100);
     String bodyString_02 = bodyString.substring(100, 200);
     String bodyString_03 = bodyString.substring(200, 300);
@@ -213,19 +180,20 @@ volatile size_t headerSize = strlen(theHeader_str);
     String bodyString_07 = bodyString.substring(600, 700);
     String bodyString_08 = bodyString.substring(700, 800);
     String bodyString_09 = bodyString.substring(800);
+    */
 
 
 
 
 
-
-
+    /*
     volatile size_t thebodiesLength = strlen(theBody);
     volatile char byte_00 = bodyString[0];
     volatile char byte_821 = bodyString[821];
     volatile char byte_822 = bodyString[822];
     volatile char byte_823 = bodyString[823];
     volatile char byte_824 = bodyString[824];
+    */
 
 
 
@@ -233,8 +201,12 @@ volatile size_t headerSize = strlen(theHeader_str);
     if (az_span_is_content_equal(requMethod, AZ_SPAN_LITERAL_FROM_STR("POST")))
     //if (requMethod az_span_c  az_http_method_post )
     {
-      int httpCode = deviceHttp->POST(bodyString);
-      delay(110);
+      //int httpCode = deviceHttp->POST(bodyString);
+
+    
+      int httpCode = deviceHttp->POST((char *)theBody);
+      
+      delay(1);
       if (httpCode > 0) { //Check for the returning code 
         String payload = deviceHttp->getString();
         //lcd_log_line("Http-Code:");
