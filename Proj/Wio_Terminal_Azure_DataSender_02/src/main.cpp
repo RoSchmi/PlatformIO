@@ -25,7 +25,8 @@
 //#include <platform.h>
 #include <azure/core/az_config_internal.h>
 #include <azure/core/az_context.h>
-//#include <azure/storage/az_storage_blobs.h>
+#include <azure/core/az_http.h>
+
 
 //#include <curl/curl.h> // libcurl is our HTTP stack
 
@@ -106,6 +107,8 @@ static SysTime sysTime;
 
 typedef const char* X509Certificate;
 
+X509Certificate myX509Certificate = baltimore_root_ca;
+
 void lcd_log_line(char* line) {
     // clear line
     tft.fillRect(0, current_text_line * LCD_LINE_HEIGHT, 320, LCD_LINE_HEIGHT, TFT_WHITE);
@@ -117,6 +120,8 @@ void lcd_log_line(char* line) {
       tft.fillScreen(TFT_WHITE);
     }
 }
+
+
 
 // forward declarations
 az_http_status_code  createTable(CloudStorageAccount *myCloudStorageAccountPtr, X509Certificate myX509Certificate, const char * tableName);
@@ -225,8 +230,9 @@ void setup() {
     }
     */
      
-    CloudStorageAccount myCloudStorageAccount(AZURE_CONFIG_ACCOUNT_NAME, AZURE_CONFIG_ACCOUNT_KEY, true);
-    //CloudStorageAccount myCloudStorageAccount(AZURE_CONFIG_ACCOUNT_NAME, AZURE_CONFIG_ACCOUNT_KEY, false);
+    //CloudStorageAccount myCloudStorageAccount(AZURE_CONFIG_ACCOUNT_NAME, AZURE_CONFIG_ACCOUNT_KEY, true);
+    CloudStorageAccount myCloudStorageAccount(AZURE_CONFIG_ACCOUNT_NAME, AZURE_CONFIG_ACCOUNT_KEY, false);
+
     
     CloudStorageAccount * myCloudStorageAccountPtr = &myCloudStorageAccount;
 
@@ -281,7 +287,7 @@ delay(1000);
     tft.fillScreen(TFT_WHITE);
 delay(100);
 
-X509Certificate myX509Certificate = baltimore_root_ca;
+//X509Certificate myX509Certificate = baltimore_root_ca;
 
 TableClient table(myCloudStorageAccountPtr, myX509Certificate, httpPtr);
 //TableClient table(myCloudStorageAccount, myX509Certificate, httpPtr);
@@ -300,10 +306,6 @@ char * sampleValue_1 = (char *)"17.1";
 char * sampleValue_2 = (char *)"17.2";
 char * sampleValue_3 = (char *)"17.3";
 char * sampleValue_4 = (char *)"17.4";
-
-//double sampleValues[4] {17.1, 17.2, 17.3, 17.4};
-  
-//az_http_status_code theResult = createTable(myCloudStorageAccountPtr, myX509Certificate, tableName);
 
 now = sysTime.getTime();
 
@@ -345,40 +347,22 @@ sprintf(TimeOffsetUTCString, " %c%03i", sign, timeZoneOffsetUTC);
   // Fills heap from 0x20029000 - 0x2002FE00 with pattern AA55
   // So you can see at breakpoints how much of heap was used
 
-  /*
+  
   ptr_one = (uint32_t *)0x20028F80;
   while (ptr_one < (uint32_t *)0x2002fe00)
   {
     *ptr_one = (uint32_t)0xAA55AA55;
      ptr_one++;
   }
-  */
   
-
-
-
+  
 
 
 //String TimeOffsetUTCString = TIMEZONE < 0 ? TIMEZONE.ToString("D3") : "+" + timeZoneOffset.ToString("D3");
 
-char sampleTime[25];
-sprintf(sampleTime, "%02i/%02i/%04i %02i:%02i:%02i%s",now.month(), now.day(), now.year() - 30, now.hour(), now.minute(), now.second(), TimeOffsetUTCString);
-//string sampleTime = actDate.Month.ToString("D2") + "/" + actDate.Day.ToString("D2") + "/" + actDate.Year + " " + actDate.Hour.ToString("D2") + ":" + actDate.Minute.ToString("D2") + ":" + actDate.Second.ToString("D2") + " " + TimeOffsetUTCString;
-  
-  // RoSchmi: for tests set sampleTime
-  //strcpy(sampleTime, "10/21/2020 10:05:19 +060");
-
-  //
-  
-
+  char sampleTime[25];
+  sprintf(sampleTime, "%02i/%02i/%04i %02i:%02i:%02i%s",now.month(), now.day(), now.year() - 30, now.hour(), now.minute(), now.second(), TimeOffsetUTCString);
   size_t propertyCount = 5;
-
-  
-
-  //EntityProperty AnalogPropertiesArray[propertyCount]; // = {{.Prefix = "H1"}, {.Prefix = "H1"}, {.Prefix = "H1"}, {.Prefix = "H1"}, {.Prefix = "H1"} };
-
-  
-  
   EntityProperty AnalogPropertiesArray[5];
   
 
@@ -388,9 +372,6 @@ sprintf(sampleTime, "%02i/%02i/%04i %02i:%02i:%02i%s",now.month(), now.day(), no
   AnalogPropertiesArray[3] = (EntityProperty)TableEntityProperty((char *)"T_3", sampleValue_3, (char *)"Edm.String");
   AnalogPropertiesArray[4] = (EntityProperty)TableEntityProperty((char *)"T_4", sampleValue_4, (char *)"Edm.String");
   
-  //az_http_status_code theResult = createTable(myCloudStorageAccountPtr, myX509Certificate, tableName);
-
-  size_t theSize = sizeof(AnalogPropertiesArray);  
   char * analogTablePartPrefix = (char *)"Y2_";
   bool augmentPartitionKey = true;
   
@@ -406,57 +387,15 @@ sprintf(sampleTime, "%02i/%02i/%04i %02i:%02i:%02i%s",now.month(), now.day(), no
   makeRowKey(now, rowKey, &rowKeyLength);
   rowKey = az_span_slice(rowKey, 0, rowKeyLength);
 
-  // RoSchmi: for tests to set a fixed rowkey
-  //rowKey = AZ_SPAN_LITERAL_FROM_STR("79800210103742");
-
-  
-
-
   now = sysTime.getTime();
-  //DateTime actDate = DateTime.Now;
-
-  
-
-
-//az_span rowKey = az_span_create_from_str((char *)makeRowKey(now).c_str());
-// az_span rowKey = makeRowKey(now);
-
+ 
   AnalogTableEntity analogTableEntity(partitionKey, rowKey, az_span_create_from_str((char *)sampleTime),  AnalogPropertiesArray, propertyCount);
-
-  //az_http_status_code theResult2 = insertTableEntity(myCloudStorageAccountPtr, myX509Certificate, tableName);
-
-  
-
-
   char EtagBuffer[5] {0};
-
-  //az_http_status_code theResult = createTable(myCloudStorageAccountPtr, myX509Certificate, tableName);
-
   az_http_status_code result3 = insertTableEntity(myCloudStorageAccountPtr, myX509Certificate, tableName, analogTableEntity, (char *)EtagBuffer);
 
-  //AnalogTableEntity analogTableEntity;
-
-
-  //az_span prefixRetrieve = AnalogPropertiesArray[0].Prefix;
-
   
 
-  //az_span_to_str(retBuffer, 90, prefixRetrieve);
   
-  
-  /*
-  char prefix[50] {0};
-  sprintf(prefix, "%s", (char *)AnalogPropertiesArray[0].Prefix);
-  char name[50] {0};
-  sprintf(name, "%s", myTableEntityProperty.Prefix);
-  */
-
-  volatile int dummy3762 = 1;
-
-  //char * prefix = myTableEntityProperty.Prefix;
-  //char * name = myTableEntityProperty.Name;
-  //char * type = myTableEntityProperty.Type;
-  //char * value = myTableEntityProperty.Value;
 
 //TableClient table(myCloudStorageAccountPtr, myX509Certificate, httpPtr);
 
@@ -535,6 +474,46 @@ if (blob_upload_result == AZ_ERROR_NOT_IMPLEMENTED)
 
 void loop() {
    //delay(200);
+CloudStorageAccount myCloudStorageAccount(AZURE_CONFIG_ACCOUNT_NAME, AZURE_CONFIG_ACCOUNT_KEY, false);
+CloudStorageAccount * myCloudStorageAccountPtr = &myCloudStorageAccount;
+TableClient table(myCloudStorageAccountPtr, myX509Certificate, httpPtr);
+const char * tableName = "AnalogTestValues2020";
+char * sampleValue_1 = (char *)"17.1";
+char * sampleValue_2 = (char *)"17.2";
+char * sampleValue_3 = (char *)"17.3";
+char * sampleValue_4 = (char *)"17.4";
+DateTime now = sysTime.getTime();
+int timeZoneOffsetUTC = (TIMEZONE * 60) / 1;
+char sign = timeZoneOffsetUTC < 0 ? '-' : '+';
+char TimeOffsetUTCString[10];
+sprintf(TimeOffsetUTCString, " %c%03i", sign, timeZoneOffsetUTC);
+char sampleTime[25];
+  sprintf(sampleTime, "%02i/%02i/%04i %02i:%02i:%02i%s",now.month(), now.day(), now.year() - 30, now.hour(), now.minute(), now.second(), TimeOffsetUTCString);
+  size_t propertyCount = 5;
+  EntityProperty AnalogPropertiesArray[5];
+  AnalogPropertiesArray[0] = (EntityProperty)TableEntityProperty((char *)"SampleTime", (char *) sampleTime, (char *)"Edm.String");
+  AnalogPropertiesArray[1] = (EntityProperty)TableEntityProperty((char *)"T_1", sampleValue_1, (char *)"Edm.String");
+  AnalogPropertiesArray[2] = (EntityProperty)TableEntityProperty((char *)"T_2", sampleValue_2, (char *)"Edm.String");
+  AnalogPropertiesArray[3] = (EntityProperty)TableEntityProperty((char *)"T_3", sampleValue_3, (char *)"Edm.String");
+  AnalogPropertiesArray[4] = (EntityProperty)TableEntityProperty((char *)"T_4", sampleValue_4, (char *)"Edm.String");
+  char * analogTablePartPrefix = (char *)"Y2_";
+  bool augmentPartitionKey = true;
+  char partKeySpan[25] {0};
+  size_t partitionKeyLength = 0;
+  az_span partitionKey = AZ_SPAN_FROM_BUFFER(partKeySpan);
+  makePartitionKey(analogTablePartPrefix, augmentPartitionKey, partitionKey, &partitionKeyLength);
+  partitionKey = az_span_slice(partitionKey, 0, partitionKeyLength);
+  char rowKeySpan[25] {0};
+  size_t rowKeyLength = 0;
+  az_span rowKey = AZ_SPAN_FROM_BUFFER(rowKeySpan);
+  makeRowKey(now, rowKey, &rowKeyLength);
+  rowKey = az_span_slice(rowKey, 0, rowKeyLength);
+  now = sysTime.getTime();
+  AnalogTableEntity analogTableEntity(partitionKey, rowKey, az_span_create_from_str((char *)sampleTime),  AnalogPropertiesArray, propertyCount);
+  char EtagBuffer[5] {0};
+  az_http_status_code result3 = insertTableEntity(myCloudStorageAccountPtr, myX509Certificate, tableName, analogTableEntity, (char *)EtagBuffer);
+
+
 
 
   for (int i = 0; i < 5; i++)
@@ -600,10 +579,20 @@ az_http_status_code insertTableEntity(CloudStorageAccount *pAccountPtr, X509Cert
 
 {
     TableClient table(pAccountPtr, pCaCert,  httpPtr);
-    
-    az_http_status_code resultCode2 = table.InsertTableEntity(pTableName, pTableEntity,  contApplicationIatomIxml, acceptApplicationIatomIxml, returnContent, false);
 
-    
+    char codeString[20] {0};
+    az_http_status_code statusCode = table.InsertTableEntity(pTableName, pTableEntity,  contApplicationIatomIxml, acceptApplicationIjson, returnContent, false); 
+    if ((statusCode == AZ_HTTP_STATUS_CODE_NO_CONTENT) || (statusCode == AZ_HTTP_STATUS_CODE_CREATED))
+    { 
+      sprintf(codeString, "%s %i", "Entity inserted: ", az_http_status_code(statusCode));    
+      lcd_log_line((char *)codeString);
+    }
+    else
+    {
+      sprintf(codeString, "%s %i", "Insertion failed: ", az_http_status_code(statusCode));    
+      lcd_log_line((char *)codeString);
+    }
+    volatile int dummy7765 = 1;
 }
 
 
@@ -621,7 +610,7 @@ az_http_status_code createTable(CloudStorageAccount *pAccountPtr, X509Certificat
             if (attachFiddler)
             { table.attachFiddler(true, fiddlerIPAddress, fiddlerPort); }
             */
-az_http_status_code resultCode = table.CreateTable(pTableName, contApplicationIatomIxml, acceptApplicationIatomIxml, returnContent);
+az_http_status_code resultCode = table.CreateTable(pTableName, contApplicationIatomIxml, acceptApplicationIatomIxml, returnContent, false);
 
 
         //    HttpStatusCode resultCode = table.CreateTable(pTableName, TableClient.ContType.applicationIatomIxml, TableClient.AcceptType.applicationIjson, TableClient.ResponseType.dont_returnContent, useSharedKeyLite: false);

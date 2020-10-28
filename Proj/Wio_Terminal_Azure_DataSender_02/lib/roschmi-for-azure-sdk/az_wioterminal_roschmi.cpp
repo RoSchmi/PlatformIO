@@ -20,6 +20,7 @@
 
 #include <az_wioterminal_roschmi.h>
 
+
 /*
 #ifdef __cplusplus
 extern "C"
@@ -51,47 +52,26 @@ az_http_client_send_request(az_http_request const* request, az_http_response* re
   
   
   az_http_method requMethod = request->_internal.method;
-  //az_span requUrl = request->_internal.url;
-  
-  volatile int32_t max_header_count = request->_internal.max_headers;
+  int32_t max_header_count = request->_internal.max_headers;
+  size_t headerCount = az_http_request_headers_count(request);
 
-  volatile int32_t theQueryStart = request->_internal.query_start;
-  volatile size_t headerCount = az_http_request_headers_count(request);
-  /*
-  az_span header_name = { 0 };
-  az_span header_value = { 0 };
-  az_http_request_get_header(request, 1, &header_name, &header_value);
-  */
+  int32_t theQueryStart = request->_internal.query_start;
 
-  /*
-  char requUrlStr [101];
-  az_span_to_str(requUrlStr, 101, requUrl);
-  String requUrlString = String(requUrlStr);
-  */
-
+// Code to copy all headers into one string, actually not needed
 /*
 uint8_t headers_buffer[300] {0};
   az_span headers_span = AZ_SPAN_FROM_BUFFER(headers_buffer);
-  
 az_result myResult = dev_az_http_client_build_headers(request, headers_span);
-
 char* theHeader_str = (char*) az_span_ptr(headers_span);
 volatile size_t headerSize = strlen(theHeader_str);
 */
      
-    //String theUrl = "jsonplaceholder.typicode.com";
-    //String thePath = "/posts?userId=1";
-
-    
-
-    //az_span requUrl = az_span_slice(request->_internal.url, 0, 100);
     char urlBuffer[az_span_size(request->_internal.url) + 2] {0};
-    az_span requUrl = AZ_SPAN_FROM_BUFFER(urlBuffer);
+    az_span_to_str((char *)urlBuffer, sizeof(urlBuffer) -1, request->_internal.url);
 
-    az_span_copy(requUrl, request->_internal.url);
-    //String theUrl = "prax47.table.core.windows.net";
-
+    //String urlString = (char *)urlBuffer;
     String urlString = (char *)urlBuffer;
+
     int foundProtocol = urlString.indexOf(':');
     String protocol = "";
     if (foundProtocol != -1)
@@ -107,9 +87,6 @@ volatile size_t headerSize = strlen(theHeader_str);
     String resource = foundSlash != -1 ? urlString.substring(foundSlash) : "";
     uint16_t port = protocol == "http" ? 80 : 443;
 
-    //RoSchmi: For tests
-    //resource = "/Tables()";
-    
     if (port == 80)
     {
       deviceHttp->begin(host, port, resource);
@@ -118,23 +95,11 @@ volatile size_t headerSize = strlen(theHeader_str);
     {
       deviceHttp->begin(host, port, resource, _caCertificate);
     }
-    //deviceHttp->setReuse(false);
-    //deviceHttp->setConnectTimeout(2000);
-
-
-    //deviceHttp->setUserAgent("RsNetmfHttpClient");
     
-    
-    //deviceHttp->begin(theUrl, (uint16_t)80, thePath);
-    //int httpCode = deviceHttp->GET();
     //deviceHttp->setUserAgent("RsWioClient");
     
-    //deviceHttp->addHeader()
-
-
-    size_t valueBufferLength = request->_internal.url_length + 40;
-    char name_buffer[30] {0};
-    char value_buffer[valueBufferLength] {0};
+    char name_buffer[MAX_HEADERNAME_LENGTH +2] {0};
+    char value_buffer[MAX_HEADERVALUE_LENGTH +2] {0};
     az_span head_name = AZ_SPAN_FROM_BUFFER(name_buffer);
     az_span head_value = AZ_SPAN_FROM_BUFFER(value_buffer);
     
@@ -145,77 +110,64 @@ volatile size_t headerSize = strlen(theHeader_str);
     {
       _az_RETURN_IF_FAILED(az_http_request_get_header(request, offset, &head_name, &head_value));
       
-      az_span_to_str((char *)name_buffer, 30, head_name);
-      az_span_to_str((char *)value_buffer, valueBufferLength, head_value);
+      az_span_to_str((char *)name_buffer, MAX_HEADERNAME_LENGTH -1, head_name);
+      az_span_to_str((char *)value_buffer, MAX_HEADERVALUE_LENGTH -1, head_value);
       nameString = (char *)name_buffer;
       valueString = (char *)value_buffer;
 
       deviceHttp->addHeader(nameString, valueString, true, true);   
     }
-    //request->_internal.body
-
-    //size_t bodyLength = az_span_size(request->_internal.body);
-
-    //az_span body = request->_internal.body;
-
-    //size_t bodyLength = az_span_size(body);
 
     int32_t bodySize = request->_internal.body._internal.size;
     char theBody[bodySize + 10] {0};
     
     az_span_to_str((char *)theBody, bodySize + 1, request->_internal.body);
-    //theBody[bodySize] = '\r';
-    //theBody[bodySize + 1] = '\n';
-
-
     
-   // String bodyString = (char *)theBody;
-    /*
-    String bodyString_01 = bodyString.substring(0, 100);
-    String bodyString_02 = bodyString.substring(100, 200);
-    String bodyString_03 = bodyString.substring(200, 300);
-    String bodyString_04 = bodyString.substring(300, 400);
-    String bodyString_05 = bodyString.substring(400, 500);
-    String bodyString_06 = bodyString.substring(500, 600);
-    String bodyString_07 = bodyString.substring(600, 700);
-    String bodyString_08 = bodyString.substring(700, 800);
-    String bodyString_09 = bodyString.substring(800);
-    */
-
-
-
-
-
-    /*
-    volatile size_t thebodiesLength = strlen(theBody);
-    volatile char byte_00 = bodyString[0];
-    volatile char byte_821 = bodyString[821];
-    volatile char byte_822 = bodyString[822];
-    volatile char byte_823 = bodyString[823];
-    volatile char byte_824 = bodyString[824];
-    */
-
-
-
-  
     if (az_span_is_content_equal(requMethod, AZ_SPAN_LITERAL_FROM_STR("POST")))
-    //if (requMethod az_span_c  az_http_method_post )
-    {
-      //int httpCode = deviceHttp->POST(bodyString);
-
-    
+     {
+       
+       const char * headerKeys[] = {"ETag", "Date", "x-ms-request-id", "x-ms-version", "Content-Type"};       
+      deviceHttp->collectHeaders(headerKeys, 5);
       int httpCode = deviceHttp->POST((char *)theBody);
       
       delay(1);
       if (httpCode > 0) { //Check for the returning code 
         String payload = deviceHttp->getString();
-        //lcd_log_line("Http-Code:");
-        //lcd_log_line(itoa((int)httpCode, buf, 10));
+        volatile size_t responseBodySize = deviceHttp->getSize();
+        size_t respHeaderCount = deviceHttp->headers();      
         int length = payload.length();
         int indexCtr = 0;
         int pageWidth = 50;
         Serial.println(httpCode);
         delay(2000);
+ 
+        char httpStatusLine[20] {0};
+        //char * httpStatusLinePtr = (char *)httpStatusLine;
+        sprintf((char *)httpStatusLine, "%s%i%s", "HTTP/1.1 ", httpCode, " ***\r\n"); 
+        
+        
+        az_result appendResult;
+        appendResult = az_http_response_append(ref_response, az_span_create_from_str((char *)httpStatusLine));
+           
+        for (size_t i = 0; i < respHeaderCount; i++)
+        {       
+          appendResult = az_http_response_append(ref_response, az_span_create_from_str((char *)deviceHttp->headerName(i).c_str()));          
+          appendResult = az_http_response_append(ref_response, az_span_create_from_str((char *)": "));
+          appendResult = az_http_response_append(ref_response, az_span_create_from_str((char *)deviceHttp->header(i).c_str()));
+          appendResult = az_http_response_append(ref_response, az_span_create_from_str((char *)"\r\n"));
+        }
+        appendResult = az_http_response_append(ref_response, az_span_create_from_str((char *)"\r\n"));
+        appendResult = az_http_response_append(ref_response, az_span_create_from_str((char *)deviceHttp->getString().c_str()));
+        //appendResult = az_http_response_append(ref_response, az_span_create_from_str((char *)"\0"));
+        
+        
+        
+
+        az_http_response_status_line statusLine;
+
+        az_result statResult = az_http_response_get_status_line(ref_response, &statusLine);
+        volatile az_span reasonPhrase = statusLine.reason_phrase;
+
         String partMessage;
         while (indexCtr < length)
         {
@@ -223,6 +175,9 @@ volatile size_t headerSize = strlen(theHeader_str);
           indexCtr += pageWidth;
         } 
         Serial.println(payload);
+
+        
+        volatile int dummy3467 = 1;
       }
       else {
         // Serial.println("Error on HTTP request");
@@ -243,25 +198,21 @@ volatile size_t headerSize = strlen(theHeader_str);
       
     }
     
+    deviceHttp->end();
+   
     
-
-
-  //_httpPtr->begin(requUrlStr, 443, "/", _caCert);
-
-
-
-  volatile int32_t queryStart = request->_internal.query_start;
+  //volatile int32_t queryStart = request->_internal.query_start;
   
   //String respString = "HTTP/1.1 200 OK";
-  char *  responseString = (char*)"HTTP/1.1 200 OK\r\nContent-length:46\r\n\r\n<html>\r\n";
+  //char *  responseString = (char*)"HTTP/1.1 200 OK\r\nContent-length:46\r\n\r\n<html>\r\n";
 
-  int32_t theLength = strlen(responseString);
+  //int32_t theLength = strlen(responseString);
 
-  az_http_response myResponse;
-  myResponse._internal.http_response = az_span_create_from_str(responseString);
+  //az_http_response myResponse;
+  //myResponse._internal.http_response = az_span_create_from_str(responseString);
   
-  myResponse._internal.written = 46;
-   ref_response = &myResponse;
+  //myResponse._internal.written = 46;
+  // ref_response = &myResponse;
    return AZ_OK;
 }
 

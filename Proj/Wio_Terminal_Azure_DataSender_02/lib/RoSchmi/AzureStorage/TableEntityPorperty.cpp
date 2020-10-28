@@ -2,11 +2,9 @@
 #include <AzureStorage/TableEntityProperty.h>
 #include <azure/core/az_span.h>
 
-
-
 EntityProperty TableEntityProperty(char * pName, char * pValue, char * pType)
 {
-    EntityProperty property;
+   // Limit input parameter to their max length
    char * validName = (char *)pName;
    if (strlen(pName) >  MAX_ENTITYPROPERTY_NAME_LENGTH)
    {
@@ -24,12 +22,9 @@ EntityProperty TableEntityProperty(char * pName, char * pValue, char * pType)
    {
       validType[MAX_ENTITYPROPERTY_TYPE_LENGTH] = '\0';
    }
-   
- 
-    //char buf[(MAX_ENTITYPROPERTY_NAME_LENGTH * 2) + MAX_ENTITYPROPERTY_VALUE_LENGTH + MAX_ENTITYPROPERTY_TYPE_LENGTH + 20];
 
-    //sprintf(buf, "<d:%s m:type=%c%s%c>%s</d:%s>", validName, '"', validType, '"', validValue, validName);
-    //strcpy(property.Prefix, buf);
+    EntityProperty property;
+   
     strcpy(property.Name, validName);
     strcpy(property.Value, validValue);
     strcpy(property.Type, validType); 

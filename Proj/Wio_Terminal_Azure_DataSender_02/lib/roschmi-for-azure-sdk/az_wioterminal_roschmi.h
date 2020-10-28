@@ -5,6 +5,9 @@
 #ifndef _AZ_WIO_TERMINAL_ROSCHMI_H_
 #define _AZ_WIO_TERMINAL_ROSCHMI_H_
 
+#define MAX_HEADERNAME_LENGTH 30
+#define MAX_HEADERVALUE_LENGTH 120
+
 
 
 void setHttpClient(HTTPClient * httpClient);

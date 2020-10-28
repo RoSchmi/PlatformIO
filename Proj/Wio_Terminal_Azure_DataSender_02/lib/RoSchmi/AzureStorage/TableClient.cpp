@@ -19,16 +19,13 @@ HTTPClient * _httpPtr;
 const char * _caCert;
 
 static SysTime sysTime;
-
-        
+      
         char * _OperationResponseBody;
         char * _OperationResponseMD5; 
         char * _OperationResponseETag; 
 
         //private Hashtable _OperationResponseSingleQuery = null;
         //private ArrayList _OperationResponseQueryList = null;
-
-
 
 // forward declarations
 void GetDateHeader(DateTime, char * stamp, char * x_ms_time);
@@ -40,7 +37,7 @@ int base64_decode(const char * input, char * output);
 int32_t dow(int32_t year, int32_t month, int32_t day);
 void GetTableXml(EntityProperty EntityProperties[], size_t propertyCount, size_t maxPropStrLength, az_span outSpan, size_t *outSpanLength);
 
-void TableClient::CreateTableAuthorizationHeader(char * content, char * canonicalResource, const char * ptimeStamp, String pHttpVerb, az_span pContentType, char * pMD5HashHex, char * pAutorizationHeader, char * pHash, int pHashLen, bool useSharedKeyLite)
+void TableClient::CreateTableAuthorizationHeader(const char * content, const char * canonicalResource, const char * ptimeStamp, const char * pHttpVerb, az_span pContentType, char * pMD5HashHex, char * pAutorizationHeader, bool useSharedKeyLite)
 {
     char contentTypeString[25] {0};
 
@@ -68,7 +65,7 @@ void TableClient::CreateTableAuthorizationHeader(char * content, char * canonica
     }
     else
     {     
-        sprintf(toSign, "%s\n%s\n%s\n%s\n%s", (char *)pHttpVerb.c_str(), pMD5HashHex , (char *)contentTypeString, (char *)ptimeStamp, canonicalResource);                       
+        sprintf(toSign, "%s\n%s\n%s\n%s\n%s", pHttpVerb, pMD5HashHex , (char *)contentTypeString, (char *)ptimeStamp, canonicalResource);                       
     }
             
     // Produce Authentication Header
@@ -100,21 +97,16 @@ void TableClient::CreateTableAuthorizationHeader(char * content, char * canonica
     char hmacResultBase64[resultBase64Size] {0};
     base64_encode(sha256HashStr, 32, hmacResultBase64, resultBase64Size);
             
-    //char retBuf[_accountPtr->AccountName.length() + strlen(hmacResultBase64) + 20] {0};
     char retBuf[MAX_ACCOUNTNAME_LENGTH + resultBase64Size + 20] {0};
     
     if (useSharedKeyLite)
-    {  
-        //sprintf(pAutorizationHeader, "%s %s:%s", (char *)"SharedKeyLite", (char *)_accountPtr->AccountName.c_str(), hmacResultBase64);                       
+    {        
         sprintf(retBuf, "%s %s:%s", (char *)"SharedKeyLite", (char *)_accountPtr->AccountName.c_str(), hmacResultBase64);               
         char * ptr = &pAutorizationHeader[0];
         for (size_t i = 0; i < strlen(retBuf); i++) {
             ptr[i] = retBuf[i];
         }
-        ptr[strlen(retBuf)] = '\0';
-        
-        //authorizationHeader = pAutorizationHeader;
-        //return authorizationHeader;
+        ptr[strlen(retBuf)] = '\0'; 
     }
     else
     {       
@@ -128,18 +120,11 @@ void TableClient::CreateTableAuthorizationHeader(char * content, char * canonica
  }
 
 
-
-        
-
 // Constructor
-TableClient::TableClient(CloudStorageAccount *account, const char * caCert, HTTPClient *httpClient)
-//TableClient::TableClient(CloudStorageAccount &account, const char * caCert, HTTPClient *httpClient)
+TableClient::TableClient(CloudStorageAccount * account, const char * caCert, HTTPClient * httpClient)
+
 {
     _accountPtr = account;
-    //_accountPtr->AccountKey = account->AccountKey;
-    //_accountPtr->AccountName = account->AccountName;
-    //_accountPtr->UriEndPointTable = account->UriEndPointTable;
-
     _caCert = caCert;
     _httpPtr = httpClient;
 }
@@ -186,6 +171,7 @@ void TableClient::send()
 
 az_http_status_code TableClient::CreateTable(const char * tableName, ContType pContentType, AcceptType pAcceptType, ResponseType pResponseType, bool useSharedKeyLite)
 {
+   // limit length of tablename
    char * validTableName = (char *)tableName;
    if (strlen(tableName) >  MAX_TABLENAME_LENGTH)
    {
@@ -209,7 +195,7 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
 
   
 
-  String HttpVerb = "POST";
+  const char * HttpVerb = "POST";
     
     const char * PROGMEM li1 = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>";
     const char * PROGMEM li2 = "<entry xmlns:d=\"http://schemas.microsoft.com/ado/2007/08/dataservices\"  ";
@@ -227,7 +213,7 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
            
   char addBuffer[600];
   sprintf(addBuffer, "%s%s%s%s%s%s%s%s%s%s%s%s%s", li1, li2, li3, li4,li5, li6, li7, li8, li9, li10,li11, li12, li13);
-  volatile size_t theLength = strlen(addBuffer);
+  
 
   az_span content_to_upload = az_span_create_from_str(addBuffer);
 
@@ -241,16 +227,14 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
   char accountName_and_Tables[MAX_ACCOUNTNAME_LENGTH + 15];
   sprintf(accountName_and_Tables, "/%s/%s", (char *)_accountPtr->AccountName.c_str(), (char *)"Tables()");
             
-  // RoSchmi todo -> eliminate
-  char hushBuffer[5];
-  int hashBufferLength = 5;
+  
 
   char md5Buffer[32 +1] {0};
 
   //char authorizationHeaderBuffer[strlen(_accountPtr->AccountName.c_str()) + 60] {0};
   char authorizationHeaderBuffer[100] {0};
 
-  CreateTableAuthorizationHeader((char *)addBuffer, accountName_and_Tables, (const char *)x_ms_timestamp, HttpVerb, contentTypeAzSpan, md5Buffer, authorizationHeaderBuffer, hushBuffer, hashBufferLength, useSharedKeyLite = false);
+  CreateTableAuthorizationHeader((char *)addBuffer, accountName_and_Tables, (const char *)x_ms_timestamp, HttpVerb, contentTypeAzSpan, md5Buffer, authorizationHeaderBuffer, useSharedKeyLite);
 
   String authorizationHeader = String((char *)authorizationHeaderBuffer);
   
@@ -445,7 +429,7 @@ az_span outPropertySpan = az_span_create(BufAddress, 300);
    //String props = _properties;
    
 
-   String HttpVerb = "POST";
+   const char * HttpVerb = "POST";
    
   //**************************************************************
   /*
@@ -510,18 +494,16 @@ az_span outPropertySpan = az_span_create(BufAddress, 300);
         char * li20  = _properties;
   const char * PROGMEM li21  = "</m:properties></content></entry>";
 
-  //char addBuffer[900];
+   // Create the body of the request
+   // To save memory for heap, allocate buffer which can hold 900 bytes at adr 0x20029200
    uint8_t addBuffer[1];
    uint8_t * addBufAddress = (uint8_t *)addBuffer;
    addBufAddress = (uint8_t *)0x20029200;
 
    az_span startContent_to_upload = az_span_create(addBufAddress, 900);
 
-   size_t outIndex = 0;
-
    uint8_t remainderBuffer[1];
    uint8_t * remainderBufAddress = (uint8_t *)remainderBuffer;
-   remainderBufAddress = (uint8_t *)0x20029700;
    az_span remainder = az_span_create(remainderBufAddress, 900);
 
    
@@ -549,177 +531,96 @@ az_span outPropertySpan = az_span_create(BufAddress, 300);
     
 az_span_copy_u8(remainder, 0);
 
-   /*
-   
-   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li1);
-   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li2);
-   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li3);
-   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li4);
-   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li5);
-   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li6);
-   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li7);
-   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li8);
-   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li9);
-   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li10);
-   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li11);
-   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li12);
-   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li13);
-   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li14);
-   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li15);
-   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li16);
-   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li17);
-   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li18);
-   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li19);
-   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li20);
-   appendCharArrayToSpan(content_to_upload, 900, 0, &outIndex, li21);
-   */
-
    //char * contToUpl = (char *)addBufAddress;
-
-   //String toUpload = contToUpl;
-
+  //String toUpload = contToUpl;
   //char addBuffer[650];
   //char addBuffer[700];
-
   //sprintf(addBuffer, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", li1, li2, li3, li4,li5, li6, li7, li8, li9, li10,li11, li12, li13, li14, li15, li16, li17, li18, li19, li20, li21); 
   //sprintf(addBuffer, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", li1, li2, li3, li4,li5, li6, li7, li8, li9, li10,li11, li12, li13, li14, li15, li16, li17, li18, li19, li20, li21, (char *)"    ");
   //volatile size_t buffLength = strlen(addBuffer);
 
   az_span content_to_upload = az_span_create_from_str((char *)addBufAddress);   
              
-       
-
    String urlPath = validTableName;
    String TableEndPoint = _accountPtr->UriEndPointTable;
    String Host = _accountPtr->HostNameTable;
 
    String Url = TableEndPoint + "/" + urlPath + "()";
    
-   
-
-
-   //**********************************************************
-
-   //RoSchmi: For tests
-   //String Url = TableEndPoint + "/Tables()";
-
-
-    //resource = "/Tables()";
-
-
-char accountName_and_Tables[MAX_ACCOUNTNAME_LENGTH + MAX_TABLENAME_LENGTH + 10];
- sprintf(accountName_and_Tables, "/%s/%s%s", (char *)_accountPtr->AccountName.c_str(), validTableName, (const char *)"()");
- //sprintf(accountName_and_Tables, "/%s/%s", (char *)_accountPtr->AccountName.c_str(), validTableName);
- // RoSchmi todo -> eliminate
-  char hushBuffer[5];
-  int hashBufferLength = 5;
-
+  char accountName_and_Tables[MAX_ACCOUNTNAME_LENGTH + MAX_TABLENAME_LENGTH + 10];
+  sprintf(accountName_and_Tables, "/%s/%s%s", (char *)_accountPtr->AccountName.c_str(), validTableName, (const char *)"()");
+  
+  // Create buffers to hold the results of MD5-hash and the value of the authorizationheader
   char md5Buffer[32 +1] {0};
-
-  //char authorizationHeaderBuffer[strlen(_accountPtr->AccountName.c_str()) + 60] {0};
   char authorizationHeaderBuffer[65] {0};
 
-  CreateTableAuthorizationHeader((char *)addBufAddress, accountName_and_Tables, (const char *)x_ms_timestamp, HttpVerb, contentTypeAzSpan, md5Buffer, authorizationHeaderBuffer, hushBuffer, hashBufferLength, useSharedKeyLite = false);
+  CreateTableAuthorizationHeader((char *)addBufAddress, accountName_and_Tables, (const char *)x_ms_timestamp, HttpVerb, contentTypeAzSpan, md5Buffer, authorizationHeaderBuffer, useSharedKeyLite);
 
-  //String authorizationHeader = String((char *)authorizationHeaderBuffer);
-  
-  volatile int initResult = 55;         
-            az_storage_tables_client tabClient;        
-            az_storage_tables_client_options options = az_storage_tables_client_options_default();
-                        
-             if (az_storage_tables_client_init(
-          &tabClient, az_span_create_from_str((char *)Url.c_str()), AZ_CREDENTIAL_ANONYMOUS, &options)
+  // Create client to handle request    
+  az_storage_tables_client tabClient;        
+  az_storage_tables_client_options options = az_storage_tables_client_options_default();
+
+  // Init Client (set Url)                      
+  if (az_storage_tables_client_init(
+      &tabClient, az_span_create_from_str((char *)Url.c_str()), AZ_CREDENTIAL_ANONYMOUS, &options)
       != AZ_OK)
   {
-      volatile int dummy643 = 1;
-      initResult = -1;
-  }
-  else
-  {
-    initResult = 0;
+      // possible breakpoint, if some something went wrong
+      volatile int dummy643 = 1;    
   }
   
 
-volatile az_span theEndpoint =  tabClient._internal.endpoint;
+//volatile az_span theEndpoint =  tabClient._internal.endpoint;
 
-   uint8_t response_buffer[2] = { 0 };
+  
+  // To save memory set buffer address to 0x2002A000
+  uint8_t responseBuffer[1000];
+  uint8_t * responseBufferAddr = (uint8_t *)responseBuffer;
+  responseBufferAddr = (uint8_t *)0x2002A000;
+  
+  az_span response_az_span = az_span_create(responseBufferAddr, sizeof(responseBuffer));
+
   az_http_response http_response;
-  if (az_result_failed(az_http_response_init(&http_response, AZ_SPAN_FROM_BUFFER(response_buffer))))
+  if (az_result_failed(az_http_response_init(&http_response, response_az_span)))
   {
      volatile int dummy644 = 1;
   }
-   /*
-   volatile uint32_t * ptr_one;
-   volatile uint32_t * last_ptr_one;
-   for (volatile int i = 0; 1 < 100000; i++)
-   {
-     last_ptr_one = ptr_one;
-     ptr_one = 0;
-     ptr_one = (uint32_t *)malloc(1);
-     if (ptr_one == 0)
-     {
-       ptr_one = last_ptr_one;
-       volatile int dummy68424 = 1;
-     }
-     else
-     {
-       *ptr_one = (uint32_t)0xAA55AA55;
-     } 
-   }
-  */
-  
-  if (az_http_response_init(&http_response, AZ_SPAN_FROM_BUFFER(response_buffer)) != AZ_OK)
-  {
-    volatile int dummy645 = 1;
-    
-  } 
+   
   az_storage_tables_upload_options uploadOptions = az_storage_tables_upload_options_default();
   
   uploadOptions._internal.acceptType = acceptTypeAzSpan;
   uploadOptions._internal.contentType = contentTypeAzSpan;
   uploadOptions._internal.perferType = responseTypeAzSpan;
 
- setHttpClient(_httpPtr);
-    setCaCert(_caCert);
+  //set HTTPClient and certificate
+  setHttpClient(_httpPtr);
+  setCaCert(_caCert);
 
     
-
-  //az_result const blob_upload_result
-  //    = az_storage_tables_upload(&tabClient, content_to_upload, az_span_create_from_str(md5Buffer), az_span_create_from_str((char *)(authorizationHeader.c_str())), az_span_create_from_str((char *)(x_ms_timestamp.c_str())),  &uploadOptions, &http_response);
-az_result const blob_upload_result
+  
+  
+  az_result const entity_upload_result
       = az_storage_tables_upload(&tabClient, content_to_upload, az_span_create_from_str(md5Buffer), az_span_create_from_str((char *)authorizationHeaderBuffer), az_span_create_from_str((char *)x_ms_timestamp), &uploadOptions, &http_response);
 
-    //tabClient._internal.options
-   //tabClient._internal.credential->_internal.apply_credential_policy
+    az_http_response_status_line statusLine;
+
+    az_result result = az_http_response_get_status_line(&http_response, &statusLine);
 
    volatile int dummy547 = 1;
     volatile int dumy4 = 1;
 
-  return AZ_HTTP_STATUS_CODE_CREATED;
+    
+
+  return statusLine.status_code;
 }      
 
 void appendCharArrayToSpan(az_span targetSpan, const size_t maxTargetLength, const size_t startIndex, size_t *outEndIndex, const char * stringToAppend)
 {
-    //uint8_t* ptr = az_span_ptr(targetSpan);
-    //uint32_t ptr = (uint32_t)targetSpan._internal.ptr;
-    
-    //uint8_t destBuffer[targetSpan._internal.size];
-    //az_span destination = AZ_SPAN_FROM_BUFFER(destBuffer);
-
     uint8_t * lastPtr = targetSpan._internal.ptr;
     int32_t lastSize = targetSpan._internal.size;
     az_span_copy(targetSpan, az_span_create_from_str((char *)stringToAppend));
-    targetSpan = (az_span){ ._internal = { .ptr = lastPtr + strlen(stringToAppend), .size = lastSize - (int32_t)strlen(stringToAppend) } };
-    
-    //targetSpan._internal.ptr += strlen(stringToAppend);
-    //targetSpan._internal.size -= strlen(stringToAppend);
-    //return (az_span){ ._internal = { .ptr = ptr, .size = size } };
-    volatile int dummy34 = 1;
-    //targetSpan = destination;
-    //targetSpan._internal.ptr += strlen(stringToAppend);
-    //az_span_copy_u8(targetSpan, 0);
-    //*outEndIndex = startIndex + 
-}
+    targetSpan = (az_span){ ._internal = { .ptr = lastPtr + strlen(stringToAppend), .size = lastSize - (int32_t)strlen(stringToAppend) } };   
+}  
 
        void OperationResultsClear()
         {
@@ -734,16 +635,11 @@ void appendCharArrayToSpan(az_span targetSpan, const size_t maxTargetLength, con
         void GetTableXml(EntityProperty EntityProperties[], size_t propertyCount, size_t maxPropStrLength, az_span outSpan, size_t *outSpanLength)
         { 
             char prop[(MAX_ENTITYPROPERTY_NAME_LENGTH * 2) + MAX_ENTITYPROPERTY_VALUE_LENGTH + MAX_ENTITYPROPERTY_TYPE_LENGTH + 20] {0};          
-            
-
-            
-            
-            
+                
             size_t outLength = 0;
             for (size_t i = 0; i < propertyCount; i++)
             {
-              // RoSchmi ToDo: define precondition      
-              //strcpy(prop, EntityProperties[i].Prefix);
+              // RoSchmi ToDo: define precondition                  
               sprintf(prop, "<d:%s m:type=%c%s%c>%s</d:%s>", EntityProperties[i].Name, '"', EntityProperties[i].Type, '"', EntityProperties[i].Value, EntityProperties[i].Name);
               if ((prop != NULL) && (strlen(prop) > 0))
               {                 
@@ -753,29 +649,6 @@ void appendCharArrayToSpan(az_span targetSpan, const size_t maxTargetLength, con
             }
             az_span_copy_u8(outSpan, 0);
             *outSpanLength = outLength;
-
-            //remainder = az_span_copy(startContent_to_upload, az_span_create_from_str((char *)li1));
-            //remainder = az_span_copy(remainder, az_span_create_from_str((char *)li2));
-
-//uint8_t * remainBuf = (uint8_t *)0x20029000;
-
-            /*
-            uint8_t * remainBuf[300];
-
-            az_span remainder = AZ_SPAN_FROM_BUFFER(remainBuf);
-              size_t outLength = 0;
-            for (size_t i = 0; i < propertyCount; i++)
-            {
-              remainder = az_span_copy(outSpan, az_span_create_from_str((char *)"<d:"));           
-              remainder = az_span_copy(remainder, az_span_create_from_str(EntityProperties[i].Name));
-              remainder = az_span_copy(remainder, az_span_create_from_str((char *)" m:type="));
-              remainder = az_span_copy(remainder, az_span_create_from_str((char *)'"'));
-              remainder = az_span_copy(remainder, az_span_create_from_str(EntityProperties[i].Type));
-              remainder = az_span_copy(remainder, az_span_create_from_str((char *)'"'));
-              remainder = az_span_copy(remainder, az_span_create_from_str((char *)">"));
-           
-            }
-            */
         }
         
         void GetDateHeader(DateTime time, char * stamp, char * x_ms_time)
