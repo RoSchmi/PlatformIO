@@ -20,6 +20,8 @@
 #define _TABLECLIENT_H_
 
 #define MAX_TABLENAME_LENGTH 50
+#define RESPONSE_BUFFER_MEMORY_ADDR 0x2002A000
+#define RESPONSE_BUFFER_LENGTH 2000
 
   typedef enum {
     contApplicationIatomIxml,

@@ -128,6 +128,7 @@ volatile size_t headerSize = strlen(theHeader_str);
        
        const char * headerKeys[] = {"ETag", "Date", "x-ms-request-id", "x-ms-version", "Content-Type"};       
       deviceHttp->collectHeaders(headerKeys, 5);
+      
       int httpCode = deviceHttp->POST((char *)theBody);
       
       delay(1);

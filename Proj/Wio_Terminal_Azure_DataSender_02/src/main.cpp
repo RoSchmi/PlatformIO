@@ -300,7 +300,7 @@ TableClient table(myCloudStorageAccountPtr, myX509Certificate, httpPtr);
 const char * tableName = "AnalogTestValues2020";
 
 // RoSchmi: do not delete
-//az_http_status_code theResult = createTable(myCloudStorageAccountPtr, myX509Certificate, tableName);
+az_http_status_code theResult = createTable(myCloudStorageAccountPtr, myX509Certificate, tableName);
 
 char * sampleValue_1 = (char *)"17.1";
 char * sampleValue_2 = (char *)"17.2";

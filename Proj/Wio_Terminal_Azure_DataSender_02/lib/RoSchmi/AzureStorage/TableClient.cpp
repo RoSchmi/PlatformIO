@@ -35,7 +35,7 @@ az_span  getResponseType_az_span(ResponseType pResponseType);
 az_span  getAcceptType_az_span(AcceptType pAcceptType);
 int base64_decode(const char * input, char * output);
 int32_t dow(int32_t year, int32_t month, int32_t day);
-void GetTableXml(EntityProperty EntityProperties[], size_t propertyCount, size_t maxPropStrLength, az_span outSpan, size_t *outSpanLength);
+void GetTableXml(EntityProperty EntityProperties[], size_t propertyCount, az_span outSpan, size_t *outSpanLength);
 
 void TableClient::CreateTableAuthorizationHeader(const char * content, const char * canonicalResource, const char * ptimeStamp, const char * pHttpVerb, az_span pContentType, char * pMD5HashHex, char * pAutorizationHeader, bool useSharedKeyLite)
 {
@@ -171,7 +171,7 @@ void TableClient::send()
 
 az_http_status_code TableClient::CreateTable(const char * tableName, ContType pContentType, AcceptType pAcceptType, ResponseType pResponseType, bool useSharedKeyLite)
 {
-   // limit length of tablename
+   // limit length of tablename to max_tablename_length
    char * validTableName = (char *)tableName;
    if (strlen(tableName) >  MAX_TABLENAME_LENGTH)
    {
@@ -194,8 +194,6 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
   az_span acceptTypeAzSpan = getAcceptType_az_span(pAcceptType);
 
   
-
-  const char * HttpVerb = "POST";
     
     const char * PROGMEM li1 = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>";
     const char * PROGMEM li2 = "<entry xmlns:d=\"http://schemas.microsoft.com/ado/2007/08/dataservices\"  ";
@@ -217,114 +215,56 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
 
   az_span content_to_upload = az_span_create_from_str(addBuffer);
 
-   String urlPath = validTableName;
-   String TableEndPoint = _accountPtr->UriEndPointTable;
-   String Host = _accountPtr->HostNameTable;
+  String urlPath = validTableName;
+  String TableEndPoint = _accountPtr->UriEndPointTable;
+  String Host = _accountPtr->HostNameTable;
+  String Url = TableEndPoint + "/Tables()";
+  const char * HttpVerb = "POST";
 
-   String Url = TableEndPoint + "/Tables()";
-
-
-  char accountName_and_Tables[MAX_ACCOUNTNAME_LENGTH + 15];
+  char accountName_and_Tables[MAX_ACCOUNTNAME_LENGTH + 12];
   sprintf(accountName_and_Tables, "/%s/%s", (char *)_accountPtr->AccountName.c_str(), (char *)"Tables()");
-            
   
-
   char md5Buffer[32 +1] {0};
 
-  //char authorizationHeaderBuffer[strlen(_accountPtr->AccountName.c_str()) + 60] {0};
   char authorizationHeaderBuffer[100] {0};
 
   CreateTableAuthorizationHeader((char *)addBuffer, accountName_and_Tables, (const char *)x_ms_timestamp, HttpVerb, contentTypeAzSpan, md5Buffer, authorizationHeaderBuffer, useSharedKeyLite);
 
-  String authorizationHeader = String((char *)authorizationHeaderBuffer);
-  
-
-            /*         
-            char canonResourceBuffer[_accountPtr->AccountName.length() + urlPath.length() + 5];
-            sprintf(canonResourceBuffer, "/%s/%s", (char *)_accountPtr->AccountName.c_str(), tableName);
-            String canonicalizedResource = canonResourceBuffer;
+  //String authorizationHeader = String((char *)authorizationHeaderBuffer);
            
-            
-            char canonHeadersBuffer[50] {0};
-            sprintf(canonHeadersBuffer, "Date:%s\nx-ms-date:%s\nx-ms-version:%s", (char *)timestamp.c_str(), (char *)timestamp.c_str(), (char *)VersionHeader.c_str());
-            String canonicalizedHeaders = canonHeadersBuffer;
-            */
-          
-            
-            
-            az_storage_tables_client tabClient;        
-            az_storage_tables_client_options options = az_storage_tables_client_options_default();
+  az_storage_tables_client tabClient;        
+  az_storage_tables_client_options options = az_storage_tables_client_options_default();
                         
-             if (az_storage_tables_client_init(
+  if (az_storage_tables_client_init(
           &tabClient, az_span_create_from_str((char *)Url.c_str()), AZ_CREDENTIAL_ANONYMOUS, &options)
       != AZ_OK)
   {
-      volatile int dummy643 = 1;
-    
+      volatile int dummy643 = 1; 
   }
 
-   volatile az_span theEndpoint =  tabClient._internal.endpoint;
-
-   uint8_t response_buffer[50] = { 0 };
-  az_http_response http_response;
-  if (az_result_failed(az_http_response_init(&http_response, AZ_SPAN_FROM_BUFFER(response_buffer))))
-  {
-     volatile int dummy644 = 1;
-  }
-
-
-
+  uint8_t * responseBufferAddr = (uint8_t *)RESPONSE_BUFFER_MEMORY_ADDR;
+  az_span response_az_span = az_span_create(responseBufferAddr, RESPONSE_BUFFER_LENGTH);
   
-  if (az_http_response_init(&http_response, AZ_SPAN_FROM_BUFFER(response_buffer)) != AZ_OK)
+  az_http_response http_response;
+  if (az_http_response_init(&http_response, response_az_span) != AZ_OK)
   {
-    volatile int dummy645 = 1;
-    
-  } 
+    volatile int dummy645 = 1; 
+  }
+
   az_storage_tables_upload_options uploadOptions = az_storage_tables_upload_options_default();
   
   uploadOptions._internal.acceptType = acceptTypeAzSpan;
   uploadOptions._internal.contentType = contentTypeAzSpan;
   uploadOptions._internal.perferType = responseTypeAzSpan;
 
-// uint8_t request_buffer[1024] = { 0 };
-// az_http_request_init
-// az_http_request http_request;
+  setHttpClient(_httpPtr);
+  setCaCert(_caCert);
 
-
-  //az_result const blob_upload_result
-  //    = az_storage_tables_upload(&tabClient, content_to_upload, az_span_create_from_str(md5Buffer), &uploadOptions, &http_request, &http_response);
-
-    setHttpClient(_httpPtr);
-    setCaCert(_caCert);
-
-    
-
-  //az_result const blob_upload_result
-  //    = az_storage_tables_upload(&tabClient, content_to_upload, az_span_create_from_str(md5Buffer), az_span_create_from_str((char *)(authorizationHeader.c_str())), az_span_create_from_str((char *)(x_ms_timestamp.c_str())),  &uploadOptions, &http_response);
-az_result const blob_upload_result
-      = az_storage_tables_upload(&tabClient, content_to_upload, az_span_create_from_str(md5Buffer), az_span_create_from_str((char *)authorizationHeader.c_str()), az_span_create_from_str((char *)x_ms_timestamp), &uploadOptions, &http_response);
-
-    //tabClient._internal.options
-   //tabClient._internal.credential->_internal.apply_credential_policy
+az_result const table_create_result
+      = az_storage_tables_upload(&tabClient, content_to_upload, az_span_create_from_str(md5Buffer), az_span_create_from_str((char *)authorizationHeaderBuffer), az_span_create_from_str((char *)x_ms_timestamp), &uploadOptions, &http_response);
 
    volatile int dummy547 = 1;
   
-        
-
-           /*
-            
-            // Uri uri = new Uri(TableEndPoint + "/Tables()");
-            Uri uri = new Uri(TableEndPoint + "/Tables()");
- 
-            var tableTypeHeaders = new Hashtable();
-            tableTypeHeaders.Add("Accept-Charset", "UTF-8");
-            tableTypeHeaders.Add("MaxDataServiceVersion", "3.0;NetFx");
-            tableTypeHeaders.Add("Content-Type", contentType);
-            tableTypeHeaders.Add("DataServiceVersion", "3.0");
-            tableTypeHeaders.Add("Prefer", getResponseTypeString(pResponseType));
-            tableTypeHeaders.Add("Content-MD5", ContentMD5);
-            */
-
  return AZ_HTTP_STATUS_CODE_CREATED;
 
             /*
@@ -351,47 +291,28 @@ az_result const blob_upload_result
             */
 }
         
- //az_http_status_code TableClient::InsertTableEntity(const char * tableName, TableEntity pEntity, uint32_t pPropertyCount, ContType pContentType, AcceptType pAcceptType, ResponseType pResponseType, bool useSharedKeyLite)
- az_http_status_code TableClient::InsertTableEntity(const char * tableName, TableEntity pEntity, ContType pContentType, AcceptType pAcceptType, ResponseType pResponseType, bool useSharedKeyLite)
 
+ az_http_status_code TableClient::InsertTableEntity(const char * tableName, TableEntity pEntity, ContType pContentType, AcceptType pAcceptType, ResponseType pResponseType, bool useSharedKeyLite)
 {
   char * validTableName = (char *)tableName;
-   if (strlen(tableName) >  MAX_TABLENAME_LENGTH)
-   {
-      validTableName[MAX_TABLENAME_LENGTH] = '\0';
-   }
+  if (strlen(tableName) >  MAX_TABLENAME_LENGTH)
+  {
+    validTableName[MAX_TABLENAME_LENGTH] = '\0';
+  }
 
-
-  //pEntity.PartitionKey._internal.size
+  char PartitionKey[15] {0};
+  az_span_to_str(PartitionKey, sizeof(PartitionKey) - 1, pEntity.PartitionKey);
+ 
+  char RowKey[16] {0};
+  az_span_to_str(RowKey, sizeof(RowKey), pEntity.RowKey);
+  
+  char SampleTime[26] {0};
+  az_span_to_str(SampleTime, sizeof(SampleTime), pEntity.SampleTime);
     
-    
-    //char PartitionKey[pEntity.PartitionKey._internal.size + 2] {0};
-    char PartitionKey[15] {0};
-    az_span_to_str(PartitionKey, sizeof(PartitionKey) - 1, pEntity.PartitionKey);
-
-    
-    //char RowKey[pEntity.RowKey._internal.size + 2] {0};
-    char RowKey[16] {0};
-    az_span_to_str(RowKey, sizeof(RowKey), pEntity.RowKey);
-
-    
-    //char SampleTime[pEntity.SampleTime._internal.size + 2] {0};
-    char SampleTime[26] {0};
-    az_span_to_str(SampleTime, sizeof(SampleTime), pEntity.SampleTime);
-    
-    
-    //EntityProperty * Properties;
-    //Properties = pEntity.Properties;
-    
-    
-    
-    //az_span Name = az_span_create_from_str((char *)pEntity.Properties[0].Name);
-
   char x_ms_timestamp[35] {0};
   char timestamp[22] {0};
 
   GetDateHeader(sysTime.getTime(), timestamp, x_ms_timestamp);
-
   String timestampUTC = timestamp;
   timestampUTC += ".0000000Z";
 
@@ -400,18 +321,16 @@ az_result const blob_upload_result
   az_span acceptTypeAzSpan = getAcceptType_az_span(pAcceptType);
 
    
-   const size_t maxPropStrLength = 70; // max size of a property string
-   size_t outBytesWritten = 0;
+   
    
 
-//   char  propBuf[300];
-//   az_span outPropertySpan = AZ_SPAN_FROM_BUFFER(propBuf);
 
-// To save memory allocate to address 0x20029000
+// To save memory allocate buffer to address 0x20029000
 uint8_t * BufAddress = (uint8_t *)0x20029000;
 az_span outPropertySpan = az_span_create(BufAddress, 300);
+size_t outBytesWritten = 0;
 
-   GetTableXml(pEntity.Properties, pEntity.PropertyCount, maxPropStrLength, outPropertySpan, &outBytesWritten);
+GetTableXml(pEntity.Properties, pEntity.PropertyCount, outPropertySpan, &outBytesWritten);
    
 
    char * _properties = (char *)az_span_ptr(outPropertySpan);
@@ -574,9 +493,9 @@ az_span_copy_u8(remainder, 0);
 
   
   // To save memory set buffer address to 0x2002A000
-  uint8_t responseBuffer[1000];
+  uint8_t responseBuffer[RESPONSE_BUFFER_LENGTH];
   uint8_t * responseBufferAddr = (uint8_t *)responseBuffer;
-  responseBufferAddr = (uint8_t *)0x2002A000;
+  responseBufferAddr = (uint8_t *)RESPONSE_BUFFER_MEMORY_ADDR;
   
   az_span response_az_span = az_span_create(responseBufferAddr, sizeof(responseBuffer));
 
@@ -632,7 +551,7 @@ void appendCharArrayToSpan(az_span targetSpan, const size_t maxTargetLength, con
         }
 
         
-        void GetTableXml(EntityProperty EntityProperties[], size_t propertyCount, size_t maxPropStrLength, az_span outSpan, size_t *outSpanLength)
+        void GetTableXml(EntityProperty EntityProperties[], size_t propertyCount, az_span outSpan, size_t *outSpanLength)
         { 
             char prop[(MAX_ENTITYPROPERTY_NAME_LENGTH * 2) + MAX_ENTITYPROPERTY_VALUE_LENGTH + MAX_ENTITYPROPERTY_TYPE_LENGTH + 20] {0};          
                 
