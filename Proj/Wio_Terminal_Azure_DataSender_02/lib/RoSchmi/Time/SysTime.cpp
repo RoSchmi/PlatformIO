@@ -16,6 +16,11 @@ SysTime::SysTime()
 
 SysTime::~SysTime(){};
 
+void SysTime::setTime(DateTime dateTime)
+{
+    begin(dateTime);
+}
+
 void SysTime::begin(DateTime dateTime)
 {   
     if (!rtcIsStarted)

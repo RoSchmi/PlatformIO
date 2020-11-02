@@ -16,6 +16,8 @@
 #include "NTP.h"
 //#include "RTC_SAMD51.h"
 #include "DateTime.h"
+#include <time.h>
+#include <Time.h>
 
 #include <Time/SysTime.h>
 
@@ -76,6 +78,15 @@
 
 #include <roschmi_az_http_helpers.h>
 
+// The PartitionKey may have a prefix to be distinguished, here: "Y2_" 
+const char * analogTablePartPrefix = (char *)"Y2_";
+
+// The PartitinKey can be augmented with a string representing year and month (recommended)
+const bool augmentPartitionKey = true;
+
+// The TableName can be augmented with the actual year (recommended)
+const bool augmentTableNameWithYear = true;
+
 TFT_eSPI tft;
 int current_text_line = 0;
 
@@ -84,9 +95,12 @@ int current_text_line = 0;
 #define LCD_FONT FreeSans9pt7b
 #define LCD_LINE_HEIGHT 18
 
-#define TIMEZONE 1.0      // TimeZone time difference to UTC
+#define TIMEZONE 60     // TimeZone time difference to UTC in minutes
+#define DSTOFFSET 60    // DaylightSaving Time offset in minutes
 
 #define URI_ENV "AZURE_STORAGE_URL"
+
+
 
 volatile int counter = 0;
 volatile int counter2 = 0;
@@ -109,6 +123,10 @@ typedef const char* X509Certificate;
 
 X509Certificate myX509Certificate = baltimore_root_ca;
 
+CloudStorageAccount myCloudStorageAccount(AZURE_CONFIG_ACCOUNT_NAME, AZURE_CONFIG_ACCOUNT_KEY, false);
+CloudStorageAccount * myCloudStorageAccountPtr = &myCloudStorageAccount;
+
+
 void lcd_log_line(char* line) {
     // clear line
     tft.fillRect(0, current_text_line * LCD_LINE_HEIGHT, 320, LCD_LINE_HEIGHT, TFT_WHITE);
@@ -124,7 +142,8 @@ void lcd_log_line(char* line) {
 
 
 // forward declarations
-az_http_status_code  createTable(CloudStorageAccount *myCloudStorageAccountPtr, X509Certificate myX509Certificate, const char * tableName);
+void createSampleTime(DateTime dateTimeUTCNow, int timeZoneOffsetUTC, char * sampleTime);
+az_http_status_code  createTable(CloudStorageAccount * myCloudStorageAccountPtr, X509Certificate myX509Certificate, const char * tableName);
 az_http_status_code CreateTable( const char * tableName, ContType pContentType, AcceptType pAcceptType, ResponseType pResponseType, bool);
 az_http_status_code insertTableEntity(CloudStorageAccount *myCloudStorageAccountPtr, X509Certificate pCaCert, const char * pTableName, TableEntity pTableEntity, char * outInsertETag);
 //az_http_status_code insertTableEntity(CloudStorageAccount *pAccountPtr, X509Certificate pCaCert, const char * pTableName);
@@ -136,8 +155,6 @@ void makeRowKey(DateTime actDate, az_span outSpan, size_t *outSpanLength);
 
 void setup() {
    
-   
-  
   tft.begin();
   tft.setRotation(3);
   tft.fillScreen(TFT_WHITE);
@@ -167,13 +184,10 @@ void setup() {
 
   char buf[42];
     sprintf(buf, "Connecting to SSID: %s", ssid);
-    lcd_log_line(buf);
-    Serial.println(buf);
-    //WiFi.enableIpV6();
+    lcd_log_line(buf);    
     WiFi.begin(ssid, password);
 
-    // attempt to connect to Wifi network:
-        
+    // attempt to connect to Wifi network:      
     while((WiFi.status() != WL_CONNECTED))
     {  
       lcd_log_line(itoa((int)WiFi.status(), buf, 10));
@@ -191,52 +205,31 @@ void setup() {
     lcd_log_line((char*)gatewayIp.toString().c_str());
     lcd_log_line((char*)subNetMask.toString().c_str());
     lcd_log_line((char*)dnsServerIp.toString().c_str());
-
-    Serial.println("\r\n> SUCCESS.");
-
-    // RoSchmi
+   
     wifi_client.setCACert(baltimore_root_ca);
 
     ntp.begin();
     ntp.update();
-    ntp.timeZone(0,0);
+    // Set Daylightsavingtime for central europe
+    ntp.ruleDST("CEST", Last, Sun, Mar, 2, 120); // last sunday in march 2:00, timetone +120min (+1 GMT + 1h summertime offset)
+    ntp.ruleSTD("CET", Last, Sun, Oct, 3, 60); // last sunday in october 3:00, timezone +60min (+1 GMT)
+    ntp.updateInterval(60000);  // Update every minute
+    
     
     lcd_log_line((char *)ntp.formattedTime("%d. %B %Y"));    // dd. Mmm yyyy
     lcd_log_line((char *)ntp.formattedTime("%A %T"));        // Www hh:mm:ss
 
-    //rtc.begin();
-
     //DateTime now = DateTime(F(__DATE__), F(__TIME__));
     //DateTime now = DateTime(F((char *)ntp.formattedTime("%d. %B %Y")), F((char *)ntp.formattedTime("%A %T")));
-    DateTime now = DateTime((uint16_t) ntp.year(), (uint8_t)ntp.month(), (uint8_t)ntp.day(),
+    DateTime dateTimeUTCNow = DateTime((uint16_t) ntp.year(), (uint8_t)ntp.month(), (uint8_t)ntp.day(),
                 (uint8_t)ntp.hours(), (uint8_t)ntp.minutes(), (uint8_t)ntp.seconds());
 
-  
-    sysTime.begin(now);
-    now = sysTime.getTime();
+    // Set rtc to UTC Time
+    sysTime.begin(dateTimeUTCNow);
     
-    /*
-    while (true)
-    {
-      uint32_t startTime = millis();
-      while ((millis() - startTime) < 5000)
-      {
-
-      }
-      now = sysTime.getTime();
-      int theSecond = now.second();
-      sprintf(buf, "Second is: %i", theSecond);
-      lcd_log_line(buf);
-    }
-    */
-     
-    //CloudStorageAccount myCloudStorageAccount(AZURE_CONFIG_ACCOUNT_NAME, AZURE_CONFIG_ACCOUNT_KEY, true);
-    CloudStorageAccount myCloudStorageAccount(AZURE_CONFIG_ACCOUNT_NAME, AZURE_CONFIG_ACCOUNT_KEY, false);
-
     
-    CloudStorageAccount * myCloudStorageAccountPtr = &myCloudStorageAccount;
-
-    String myUriEndPoint =  myCloudStorageAccount.UriEndPointTable;
+    
+    //String myUriEndPoint =  myCloudStorageAccount.UriEndPointTable;
 
 // Example see 
 // https://github.com/Azure/azure-sdk-for-c/blob/5c7444dfcd5f0b3bcf3aec2f7b62639afc8bd664/sdk/samples/storage/blobs/src/blobs_client_example.c
@@ -246,28 +239,6 @@ void setup() {
 // https://docs.microsoft.com/de-de/rest/api/storageservices/naming-and-referencing-containers--blobs--and-metadata
 
 
-/*
-    az_storage_blobs_blob_client client;
-
-    az_storage_blobs_blob_client_options options = az_storage_blobs_blob_client_options_default();
-    
-    //char* thisEnv = getenv(URI_ENV);
-    char* thisUrl = (char *)"https://roschmi01.blob.core.windows.net/con7/myblob/";
-
-    //volatile String thisEnvStr(thisUrl);
-    
-      if (az_storage_blobs_blob_client_init(
-          &client, az_span_create_from_str(thisUrl), AZ_CREDENTIAL_ANONYMOUS, &options)
-      != AZ_OK)
-  {
-    lcd_log_line((char *)"Client not created");
-    //printf("\nFailed to init blob client\n");
-    //return 1;
-  }
-  az_span theEndpoint = client._internal.endpoint;
-
-   volatile uint32_t theLenght = theEndpoint._internal.size;
-*/
 
  
   // Prepare response
@@ -287,33 +258,43 @@ delay(1000);
     tft.fillScreen(TFT_WHITE);
 delay(100);
 
-//X509Certificate myX509Certificate = baltimore_root_ca;
-
 TableClient table(myCloudStorageAccountPtr, myX509Certificate, httpPtr);
-//TableClient table(myCloudStorageAccount, myX509Certificate, httpPtr);
 
-// RoSchmi
-//table.send();
+String tableName = "AnalogTestValues";
+if (augmentTableNameWithYear)
+{
+  tableName += (dateTimeUTCNow.year() - 30);
+}
 
-//String tableName = "newtable";
 
-const char * tableName = "AnalogTestValues2020";
+//const char * tableName = "AnalogTestValues2020";
 
 // RoSchmi: do not delete
-az_http_status_code theResult = createTable(myCloudStorageAccountPtr, myX509Certificate, tableName);
+// az_http_status_code theResult = createTable(myCloudStorageAccountPtr, myX509Certificate, tableName);
 
 char * sampleValue_1 = (char *)"17.1";
 char * sampleValue_2 = (char *)"17.2";
 char * sampleValue_3 = (char *)"17.3";
 char * sampleValue_4 = (char *)"17.4";
 
-now = sysTime.getTime();
 
-int timeZoneOffsetUTC = (TIMEZONE * 60) / 1;
-char sign = timeZoneOffsetUTC < 0 ? '-' : '+';
 
-char TimeOffsetUTCString[10];
-sprintf(TimeOffsetUTCString, " %c%03i", sign, timeZoneOffsetUTC);
+int timeZoneOffsetUTC = ntp.isDST() ? TIMEZONE + DSTOFFSET : TIMEZONE;
+//char sign = timeZoneOffsetUTC < 0 ? '-' : '+';
+//char TimeOffsetUTCString[10];
+//sprintf(TimeOffsetUTCString, " %c%03i", sign, timeZoneOffsetUTC);
+
+dateTimeUTCNow = sysTime.getTime();
+
+char sampleTime[25] {0};
+createSampleTime(dateTimeUTCNow, timeZoneOffsetUTC, (char *)sampleTime);
+
+//sprintf(sampleTime, "%02i/%02i/%04i %02i:%02i:%02i%s",dateTimeUTCNow.month(), dateTimeUTCNow.day(), dateTimeUTCNow.year() - 30, dateTimeUTCNow.hour(), dateTimeUTCNow.minute(), dateTimeUTCNow.second(), TimeOffsetUTCString);
+
+//TimeSpan timeSpanOffsetToUTC = TimeSpan(0,0,)
+//DateTime localNow = dateTimeUTCNow - 
+
+
 
    uint32_t * ptr_one;
    uint32_t * last_ptr_one;
@@ -347,7 +328,6 @@ sprintf(TimeOffsetUTCString, " %c%03i", sign, timeZoneOffsetUTC);
   // Fills heap from 0x20029000 - 0x2002FE00 with pattern AA55
   // So you can see at breakpoints how much of heap was used
 
-  
   ptr_one = (uint32_t *)0x20028F80;
   while (ptr_one < (uint32_t *)0x2002fe00)
   {
@@ -355,25 +335,14 @@ sprintf(TimeOffsetUTCString, " %c%03i", sign, timeZoneOffsetUTC);
      ptr_one++;
   }
   
-  
-
-
-//String TimeOffsetUTCString = TIMEZONE < 0 ? TIMEZONE.ToString("D3") : "+" + timeZoneOffset.ToString("D3");
-
-  char sampleTime[25];
-  sprintf(sampleTime, "%02i/%02i/%04i %02i:%02i:%02i%s",now.month(), now.day(), now.year() - 30, now.hour(), now.minute(), now.second(), TimeOffsetUTCString);
   size_t propertyCount = 5;
   EntityProperty AnalogPropertiesArray[5];
   
-
   AnalogPropertiesArray[0] = (EntityProperty)TableEntityProperty((char *)"SampleTime", (char *) sampleTime, (char *)"Edm.String");
   AnalogPropertiesArray[1] = (EntityProperty)TableEntityProperty((char *)"T_1", sampleValue_1, (char *)"Edm.String");
   AnalogPropertiesArray[2] = (EntityProperty)TableEntityProperty((char *)"T_2", sampleValue_2, (char *)"Edm.String");
   AnalogPropertiesArray[3] = (EntityProperty)TableEntityProperty((char *)"T_3", sampleValue_3, (char *)"Edm.String");
   AnalogPropertiesArray[4] = (EntityProperty)TableEntityProperty((char *)"T_4", sampleValue_4, (char *)"Edm.String");
-  
-  char * analogTablePartPrefix = (char *)"Y2_";
-  bool augmentPartitionKey = true;
   
   char partKeySpan[25] {0};
   size_t partitionKeyLength = 0;
@@ -384,14 +353,14 @@ sprintf(TimeOffsetUTCString, " %c%03i", sign, timeZoneOffsetUTC);
   char rowKeySpan[25] {0};
   size_t rowKeyLength = 0;
   az_span rowKey = AZ_SPAN_FROM_BUFFER(rowKeySpan);
-  makeRowKey(now, rowKey, &rowKeyLength);
+  makeRowKey(dateTimeUTCNow, rowKey, &rowKeyLength);
   rowKey = az_span_slice(rowKey, 0, rowKeyLength);
 
-  now = sysTime.getTime();
+  dateTimeUTCNow = sysTime.getTime();
  
   AnalogTableEntity analogTableEntity(partitionKey, rowKey, az_span_create_from_str((char *)sampleTime),  AnalogPropertiesArray, propertyCount);
   char EtagBuffer[5] {0};
-  az_http_status_code result3 = insertTableEntity(myCloudStorageAccountPtr, myX509Certificate, tableName, analogTableEntity, (char *)EtagBuffer);
+  az_http_status_code result3 = insertTableEntity(myCloudStorageAccountPtr, myX509Certificate, (char *)tableName.c_str(), analogTableEntity, (char *)EtagBuffer);
 
   
 
@@ -474,21 +443,35 @@ if (blob_upload_result == AZ_ERROR_NOT_IMPLEMENTED)
 
 void loop() {
    //delay(200);
-CloudStorageAccount myCloudStorageAccount(AZURE_CONFIG_ACCOUNT_NAME, AZURE_CONFIG_ACCOUNT_KEY, false);
-CloudStorageAccount * myCloudStorageAccountPtr = &myCloudStorageAccount;
+
+   DateTime dateTimeUTCNow = sysTime.getTime();
+   if (ntp.update())
+   {
+       dateTimeUTCNow = DateTime((uint16_t) ntp.year(), (uint8_t)ntp.month(), (uint8_t)ntp.day(),
+                (uint8_t)ntp.hours(), (uint8_t)ntp.minutes(), (uint8_t)ntp.seconds());
+
+    // Set rtc to UTC Time
+    sysTime.setTime(dateTimeUTCNow);
+   }
+
 TableClient table(myCloudStorageAccountPtr, myX509Certificate, httpPtr);
-const char * tableName = "AnalogTestValues2020";
+
+
+int timeZoneOffsetUTC = ntp.isDST() ? TIMEZONE + DSTOFFSET : TIMEZONE;
+char sampleTime[25] {0};
+createSampleTime(dateTimeUTCNow, timeZoneOffsetUTC, (char *)sampleTime);
+
+String tableName = "AnalogTestValues";
+if (augmentTableNameWithYear)
+{
+  tableName += (dateTimeUTCNow.year() - 30);
+}
 char * sampleValue_1 = (char *)"17.1";
 char * sampleValue_2 = (char *)"17.2";
 char * sampleValue_3 = (char *)"17.3";
 char * sampleValue_4 = (char *)"17.4";
-DateTime now = sysTime.getTime();
-int timeZoneOffsetUTC = (TIMEZONE * 60) / 1;
-char sign = timeZoneOffsetUTC < 0 ? '-' : '+';
-char TimeOffsetUTCString[10];
-sprintf(TimeOffsetUTCString, " %c%03i", sign, timeZoneOffsetUTC);
-char sampleTime[25];
-  sprintf(sampleTime, "%02i/%02i/%04i %02i:%02i:%02i%s",now.month(), now.day(), now.year() - 30, now.hour(), now.minute(), now.second(), TimeOffsetUTCString);
+
+
   size_t propertyCount = 5;
   EntityProperty AnalogPropertiesArray[5];
   AnalogPropertiesArray[0] = (EntityProperty)TableEntityProperty((char *)"SampleTime", (char *) sampleTime, (char *)"Edm.String");
@@ -496,8 +479,7 @@ char sampleTime[25];
   AnalogPropertiesArray[2] = (EntityProperty)TableEntityProperty((char *)"T_2", sampleValue_2, (char *)"Edm.String");
   AnalogPropertiesArray[3] = (EntityProperty)TableEntityProperty((char *)"T_3", sampleValue_3, (char *)"Edm.String");
   AnalogPropertiesArray[4] = (EntityProperty)TableEntityProperty((char *)"T_4", sampleValue_4, (char *)"Edm.String");
-  char * analogTablePartPrefix = (char *)"Y2_";
-  bool augmentPartitionKey = true;
+  
   char partKeySpan[25] {0};
   size_t partitionKeyLength = 0;
   az_span partitionKey = AZ_SPAN_FROM_BUFFER(partKeySpan);
@@ -506,12 +488,12 @@ char sampleTime[25];
   char rowKeySpan[25] {0};
   size_t rowKeyLength = 0;
   az_span rowKey = AZ_SPAN_FROM_BUFFER(rowKeySpan);
-  makeRowKey(now, rowKey, &rowKeyLength);
+  makeRowKey(dateTimeUTCNow, rowKey, &rowKeyLength);
   rowKey = az_span_slice(rowKey, 0, rowKeyLength);
-  now = sysTime.getTime();
+  
   AnalogTableEntity analogTableEntity(partitionKey, rowKey, az_span_create_from_str((char *)sampleTime),  AnalogPropertiesArray, propertyCount);
   char EtagBuffer[5] {0};
-  az_http_status_code result3 = insertTableEntity(myCloudStorageAccountPtr, myX509Certificate, tableName, analogTableEntity, (char *)EtagBuffer);
+  az_http_status_code result3 = insertTableEntity(myCloudStorageAccountPtr, myX509Certificate, (char *)tableName.c_str(), analogTableEntity, (char *)EtagBuffer);
 
 
 
@@ -536,6 +518,19 @@ char sampleTime[25];
     counter++;
 }
 
+void createSampleTime(DateTime dateTimeUTCNow, int timeZoneOffsetUTC, char * sampleTime)
+{
+  int hoursOffset = timeZoneOffsetUTC / 60;
+  int minutesOffset = timeZoneOffsetUTC % 60;
+  char sign = timeZoneOffsetUTC < 0 ? '-' : '+';
+  char TimeOffsetUTCString[10];
+  sprintf(TimeOffsetUTCString, " %c%03i", sign, timeZoneOffsetUTC);
+  TimeSpan timespanOffsetToUTC = TimeSpan(0, hoursOffset, minutesOffset, 0);
+  DateTime newDateTime = dateTimeUTCNow + timespanOffsetToUTC;
+  sprintf(sampleTime, "%02i/%02i/%04i %02i:%02i:%02i%s",newDateTime.month(), newDateTime.day(), newDateTime.year() - 30, newDateTime.hour(), newDateTime.minute(), newDateTime.second(), TimeOffsetUTCString);
+}
+
+
  //HttpStatusCode createTable(CloudStorageAccount pCloudStorageAccount, X509Certificate[] pCaCerts, string pTableName)
  
 void makeRowKey(DateTime actDate,  az_span outSpan, size_t *outSpanLength)
@@ -555,9 +550,9 @@ void makeRowKey(DateTime actDate,  az_span outSpan, size_t *outSpanLength)
 void makePartitionKey(const char * partitionKeyprefix, bool augmentWithYear, az_span outSpan, size_t *outSpanLength)
         {
             // if wanted, augment with year and month (12 - month for right order)
-            DateTime now = sysTime.getTime();                      
+            DateTime dateTimeUTCNow = sysTime.getTime();                      
             char dateBuf[20] {0};
-            sprintf(dateBuf, "%s%d-%02d", partitionKeyprefix, (now.year() - 30), (12 - now.month()));  
+            sprintf(dateBuf, "%s%d-%02d", partitionKeyprefix, (dateTimeUTCNow.year() - 30), (12 - dateTimeUTCNow.month()));  
                    
             az_span ret_1 = az_span_create_from_str((char *)dateBuf);
             az_span ret_2 = az_span_create_from_str((char *)partitionKeyprefix);
@@ -598,25 +593,11 @@ az_http_status_code insertTableEntity(CloudStorageAccount *pAccountPtr, X509Cert
 
 
 az_http_status_code createTable(CloudStorageAccount *pAccountPtr, X509Certificate pCaCert, const char * pTableName)
-{
-   //TableClient(CloudStorageAccount *account, const char * caCert, HTTPClient *httpClient);
-  //TableClient table(myCloudStorageAccountPtr, myX509Certificate, httpPtr);
-  //CloudStorageAccount localCloudStorageAccount = pCloudStorageAccount;
-  TableClient table(pAccountPtr, pCaCert,  httpPtr); // _debug, _debug_level);
-
-            // To use Fiddler as WebProxy include the following line. Use the local IP-Address of the PC where Fiddler is running
-            // see: -http://blog.devmobile.co.nz/2013/01/09/netmf-http-debugging-with-fiddler
-            /*
-            if (attachFiddler)
-            { table.attachFiddler(true, fiddlerIPAddress, fiddlerPort); }
-            */
-az_http_status_code resultCode = table.CreateTable(pTableName, contApplicationIatomIxml, acceptApplicationIatomIxml, returnContent, false);
-
-
-        //    HttpStatusCode resultCode = table.CreateTable(pTableName, TableClient.ContType.applicationIatomIxml, TableClient.AcceptType.applicationIjson, TableClient.ResponseType.dont_returnContent, useSharedKeyLite: false);
-         //   return resultCode;
-         return AZ_HTTP_STATUS_CODE_ACCEPTED;
-        }
+{  
+  TableClient table(pAccountPtr, pCaCert,  httpPtr);            
+  az_http_status_code statusCode = table.CreateTable(pTableName, contApplicationIatomIxml, acceptApplicationIatomIxml, returnContent, false);
+  return statusCode;
+}
 
 
 

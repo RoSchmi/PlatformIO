@@ -260,35 +260,14 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
   setHttpClient(_httpPtr);
   setCaCert(_caCert);
 
-az_result const table_create_result
+  az_result const table_create_result
       = az_storage_tables_upload(&tabClient, content_to_upload, az_span_create_from_str(md5Buffer), az_span_create_from_str((char *)authorizationHeaderBuffer), az_span_create_from_str((char *)x_ms_timestamp), &uploadOptions, &http_response);
 
-   volatile int dummy547 = 1;
+  az_http_response_status_line statusLine;
+
+  az_result result = az_http_response_get_status_line(&http_response, &statusLine);
   
- return AZ_HTTP_STATUS_CODE_CREATED;
-
-            /*
-            if (_fiddlerIsAttached)
-            { AzureStorageHelper.AttachFiddler(_fiddlerIsAttached, _fiddlerIP, _fiddlerPort); }
-
-            BasicHttpResponse response = new BasicHttpResponse();
-            try
-            {
-                AzureStorageHelper.SetDebugMode(_debug);
-                AzureStorageHelper.SetDebugLevel(_debug_level);
-               
-                response = AzureStorageHelper.SendWebRequest(caCerts, uri, authorizationHeader, timestamp, VersionHeader, payload, contentLength, HttpVerb, false, acceptType, tableTypeHeaders);
-
-                return response.StatusCode;
-            }
-            catch (Exception ex)
-            {
-                _Print_Debug("Exception was cought: " + ex.Message);
-                //Debug.WriteLine("Exception was cought: " + ex.Message);
-                response.StatusCode = HttpStatusCode.Forbidden;
-                return response.StatusCode;
-            }
-            */
+ return statusLine.status_code;          
 }
         
 
@@ -320,77 +299,17 @@ az_result const table_create_result
   az_span responseTypeAzSpan = getResponseType_az_span(pResponseType);
   az_span acceptTypeAzSpan = getAcceptType_az_span(pAcceptType);
 
-   
-   
-   
-
-
 // To save memory allocate buffer to address 0x20029000
-uint8_t * BufAddress = (uint8_t *)0x20029000;
-az_span outPropertySpan = az_span_create(BufAddress, 300);
+uint8_t * BufAddress = (uint8_t *)PROPERTIES_BUFFER_MEMORY_ADDR;
+az_span outPropertySpan = az_span_create(BufAddress, PROPERTIES_BUFFER_LENGTH);
 size_t outBytesWritten = 0;
 
 GetTableXml(pEntity.Properties, pEntity.PropertyCount, outPropertySpan, &outBytesWritten);
    
+char * _properties = (char *)az_span_ptr(outPropertySpan);
 
-   char * _properties = (char *)az_span_ptr(outPropertySpan);
-
-   /*
-   uint8_t newBuffer[100];
-   uint8_t * BufAddress = (uint8_t *)newBuffer;
-   BufAddress = (uint8_t *)0x20029000;
-   *BufAddress = 0x51;
-   az_span newSpan = az_span_create((uint8_t *)newBuffer, 100);
-   */
-
-   //char * _properties = (char *)"<Hello></Hello>";
-  
-   //String props = _properties;
+const char * HttpVerb = "POST";
    
-
-   const char * HttpVerb = "POST";
-   
-  //**************************************************************
-  /*
-
-    const char * li1 = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>";
-    const char * li2 = "<entry xmlns:d=\"http://schemas.microsoft.com/ado/2007/08/dataservices\"  ";
-    const char * li3 = "xmlns:m=\"http://schemas.microsoft.com/ado/2007/08/dataservices/metadata\" ";
-    const char * li4 = "xmlns=\"http://www.w3.org/2005/Atom\"> <id>http://";
-          char * li5 = (char *)_accountPtr->AccountName.c_str();
-    const char * li6 = ".table.core.windows.net/Tables('";
-          char * li7 = (char *)validTableName;
-    const char * li8 = "')</id><title /><updated>";
-    char * li9 = (char *)timestampUTC.c_str();
-    const char * li10 = "</updated><author><name/></author> ";
-    const char * li11 = "<content type=\"application/xml\"><m:properties><d:TableName>";
-          char * li12 = (char *)validTableName;
-    const char * li13 = "</d:TableName></m:properties></content></entry>";
-           
-  char addBuffer[600];
-  sprintf(addBuffer, "%s%s%s%s%s%s%s%s%s%s%s%s%s", li1, li2, li3, li4,li5, li6, li7, li8, li9, li10,li11, li12, li13);
-  volatile size_t theLength = strlen(addBuffer);
-
-  az_span content_to_upload = az_span_create_from_str(addBuffer);
-
-   String urlPath = tableName;
-   String TableEndPoint = _accountPtr->UriEndPointTable;
-   String Host = _accountPtr->HostNameTable;
-
-   String Url = TableEndPoint + "/Tables()";
-
-*/
-//**************************************************************
-
-
-
-
-
-
-//*******************************************************
-
-
-  
   const char * PROGMEM li1 = "<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\"?>";
   const char * PROGMEM li2 = "<entry xmlns:d=\"http://schemas.microsoft.com/ado/2007/08/dataservices\"  ";
   const char * PROGMEM li3 = "xmlns:m=\"http://schemas.microsoft.com/ado/2007/08/dataservices/metadata\" ";    
@@ -417,15 +336,14 @@ GetTableXml(pEntity.Properties, pEntity.PropertyCount, outPropertySpan, &outByte
    // To save memory for heap, allocate buffer which can hold 900 bytes at adr 0x20029200
    uint8_t addBuffer[1];
    uint8_t * addBufAddress = (uint8_t *)addBuffer;
-   addBufAddress = (uint8_t *)0x20029200;
+   addBufAddress = (uint8_t *)REQUEST_BODY_BUFFER_MEMORY_ADDR;
 
-   az_span startContent_to_upload = az_span_create(addBufAddress, 900);
+   az_span startContent_to_upload = az_span_create(addBufAddress, REQUEST_BODY_BUFFER_LENGTH);
 
    uint8_t remainderBuffer[1];
    uint8_t * remainderBufAddress = (uint8_t *)remainderBuffer;
    az_span remainder = az_span_create(remainderBufAddress, 900);
 
-   
             remainder = az_span_copy(startContent_to_upload, az_span_create_from_str((char *)li1));
             remainder = az_span_copy(remainder, az_span_create_from_str((char *)li2));
             remainder = az_span_copy(remainder, az_span_create_from_str((char *)li3));
@@ -449,15 +367,15 @@ GetTableXml(pEntity.Properties, pEntity.PropertyCount, outPropertySpan, &outByte
             remainder = az_span_copy(remainder, az_span_create_from_str((char *)li21));
     
 az_span_copy_u8(remainder, 0);
-
-   //char * contToUpl = (char *)addBufAddress;
+  
+  // This is how concatenation of the strings was done before
+  // It made the application crash in building sha512 hash
+  //char * contToUpl = (char *)addBufAddress;
   //String toUpload = contToUpl;
   //char addBuffer[650];
   //char addBuffer[700];
   //sprintf(addBuffer, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", li1, li2, li3, li4,li5, li6, li7, li8, li9, li10,li11, li12, li13, li14, li15, li16, li17, li18, li19, li20, li21); 
-  //sprintf(addBuffer, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", li1, li2, li3, li4,li5, li6, li7, li8, li9, li10,li11, li12, li13, li14, li15, li16, li17, li18, li19, li20, li21, (char *)"    ");
-  //volatile size_t buffLength = strlen(addBuffer);
-
+ 
   az_span content_to_upload = az_span_create_from_str((char *)addBufAddress);   
              
    String urlPath = validTableName;
@@ -488,16 +406,9 @@ az_span_copy_u8(remainder, 0);
       volatile int dummy643 = 1;    
   }
   
-
-//volatile az_span theEndpoint =  tabClient._internal.endpoint;
-
-  
   // To save memory set buffer address to 0x2002A000
-  uint8_t responseBuffer[RESPONSE_BUFFER_LENGTH];
-  uint8_t * responseBufferAddr = (uint8_t *)responseBuffer;
-  responseBufferAddr = (uint8_t *)RESPONSE_BUFFER_MEMORY_ADDR;
-  
-  az_span response_az_span = az_span_create(responseBufferAddr, sizeof(responseBuffer));
+   uint8_t * responseBufferAddr = (uint8_t *)RESPONSE_BUFFER_MEMORY_ADDR;
+  az_span response_az_span = az_span_create(responseBufferAddr, RESPONSE_BUFFER_LENGTH);
 
   az_http_response http_response;
   if (az_result_failed(az_http_response_init(&http_response, response_az_span)))
@@ -515,20 +426,12 @@ az_span_copy_u8(remainder, 0);
   setHttpClient(_httpPtr);
   setCaCert(_caCert);
 
-    
-  
-  
   az_result const entity_upload_result
       = az_storage_tables_upload(&tabClient, content_to_upload, az_span_create_from_str(md5Buffer), az_span_create_from_str((char *)authorizationHeaderBuffer), az_span_create_from_str((char *)x_ms_timestamp), &uploadOptions, &http_response);
 
     az_http_response_status_line statusLine;
 
     az_result result = az_http_response_get_status_line(&http_response, &statusLine);
-
-   volatile int dummy547 = 1;
-    volatile int dumy4 = 1;
-
-    
 
   return statusLine.status_code;
 }      
@@ -539,103 +442,78 @@ void appendCharArrayToSpan(az_span targetSpan, const size_t maxTargetLength, con
     int32_t lastSize = targetSpan._internal.size;
     az_span_copy(targetSpan, az_span_create_from_str((char *)stringToAppend));
     targetSpan = (az_span){ ._internal = { .ptr = lastPtr + strlen(stringToAppend), .size = lastSize - (int32_t)strlen(stringToAppend) } };   
-}  
+}
 
-       void OperationResultsClear()
-        {
-            //_OperationResponseETag = null;
-            //_OperationResponseBody = null;
-            //_OperationResponseMD5 = null;
-            //_OperationResponseSingleQuery = null;
-            //_OperationResponseQueryList = null;
-        }
-
-        
-        void GetTableXml(EntityProperty EntityProperties[], size_t propertyCount, az_span outSpan, size_t *outSpanLength)
-        { 
-            char prop[(MAX_ENTITYPROPERTY_NAME_LENGTH * 2) + MAX_ENTITYPROPERTY_VALUE_LENGTH + MAX_ENTITYPROPERTY_TYPE_LENGTH + 20] {0};          
+void GetTableXml(EntityProperty EntityProperties[], size_t propertyCount, az_span outSpan, size_t *outSpanLength)
+{ 
+  char prop[(MAX_ENTITYPROPERTY_NAME_LENGTH * 2) + MAX_ENTITYPROPERTY_VALUE_LENGTH + MAX_ENTITYPROPERTY_TYPE_LENGTH + 20] {0};          
                 
-            size_t outLength = 0;
-            for (size_t i = 0; i < propertyCount; i++)
-            {
-              // RoSchmi ToDo: define precondition                  
-              sprintf(prop, "<d:%s m:type=%c%s%c>%s</d:%s>", EntityProperties[i].Name, '"', EntityProperties[i].Type, '"', EntityProperties[i].Value, EntityProperties[i].Name);
-              if ((prop != NULL) && (strlen(prop) > 0))
-              {                 
-                  outSpan = az_span_copy(outSpan, az_span_create_from_str((char *)prop));
-                  outLength += strlen((char *)prop);    
-              }           
-            }
-            az_span_copy_u8(outSpan, 0);
-            *outSpanLength = outLength;
-        }
+  size_t outLength = 0;
+  for (size_t i = 0; i < propertyCount; i++)
+  {
+    // RoSchmi ToDo: define precondition                  
+    sprintf(prop, "<d:%s m:type=%c%s%c>%s</d:%s>", EntityProperties[i].Name, '"', EntityProperties[i].Type, '"', EntityProperties[i].Value, EntityProperties[i].Name);
+    if ((prop != NULL) && (strlen(prop) > 0))
+    {                 
+      outSpan = az_span_copy(outSpan, az_span_create_from_str((char *)prop));
+      outLength += strlen((char *)prop);    
+    }           
+  }
+  az_span_copy_u8(outSpan, 0);
+  *outSpanLength = outLength;
+}
         
-        void GetDateHeader(DateTime time, char * stamp, char * x_ms_time)
-        {
-           
+void GetDateHeader(DateTime time, char * stamp, char * x_ms_time)
+{
+  int32_t dayOfWeek = dow((int32_t)time.year() -30, (int32_t)time.month(), (int32_t)time.day());
 
-int32_t dayOfWeek = dow((int32_t)time.year() -30, (int32_t)time.month(), (int32_t)time.day());
+  struct tm timeinfo {
+                      (int)time.second(),
+                      (int)time.minute(),
+                      (int)time.hour(),
+                      (int)time.day(),
+                      (int)time.month(),
+                      (int)(time.year() - 1900 - 30),                       
+                      (int)dayOfWeek,
+                      0,                               
+                      0};
 
-          struct tm timeinfo {
-                        (int)time.second(),
-                        (int)time.minute(),
-                        (int)time.hour(),
-                        (int)time.day(),
-                        (int)time.month(),
-                        (int)(time.year() - 1900 - 30),                       
-                        (int)dayOfWeek,
-                        0,                               
-                        0};
-
-        int monthSave = (int)time.month();
-
-          // RoSchmi: There seems to be a bug in the strftime function selecting the month name
-          // January is taken for 0, it should be taken for 1
-          // Here I use a bugfix to correct the association 
-          
-        
-        // Check if 1 is associated with Feb (instead of Jan)
-        // If true -> decrement by 1
-       
-        timeinfo.tm_mon = 1;
-        strftime((char *)x_ms_time, 35, "%b", &timeinfo);
-        
-        timeinfo.tm_mon =  (strcmp(x_ms_time, (char *)"Feb") == 0) ? (monthSave - 1) : monthSave;
+  timeinfo.tm_mon =  (int)time.month() -1;
                   
-          strftime((char *)x_ms_time, 35, "%a, %d %b %Y %H:%M:%S GMT", &timeinfo);
-          strftime((char *)stamp, 22, "%Y-%m-%dT%H:%M:%S", &timeinfo);
+  strftime((char *)x_ms_time, 35, "%a, %d %b %Y %H:%M:%S GMT", &timeinfo);
+  strftime((char *)stamp, 22, "%Y-%m-%dT%H:%M:%S", &timeinfo);
        
-        }
+}
 
-        az_span getContentType_az_span(ContType pContentType)
-        {           
-            if (pContentType == contApplicationIatomIxml)
-            { 
-              return AZ_SPAN_LITERAL_FROM_STR("application/atom+xml");          
-            }
-            else
-            { 
-              return AZ_SPAN_LITERAL_FROM_STR("application/json"); 
-            }
-        }
+az_span getContentType_az_span(ContType pContentType)
+{           
+  if (pContentType == contApplicationIatomIxml)
+  { 
+    return AZ_SPAN_LITERAL_FROM_STR("application/atom+xml");          
+  }
+  else
+  { 
+    return AZ_SPAN_LITERAL_FROM_STR("application/json"); 
+  }
+}
 
-        az_span getAcceptType_az_span(AcceptType pAcceptType)
-        {
-          if (pAcceptType == acceptApplicationIatomIxml)
-            { return AZ_SPAN_LITERAL_FROM_STR("application/atom+xml"); }
-            else
-            { return AZ_SPAN_LITERAL_FROM_STR("application/json"); }
-        }
+az_span getAcceptType_az_span(AcceptType pAcceptType)
+{
+  if (pAcceptType == acceptApplicationIatomIxml)
+  { return AZ_SPAN_LITERAL_FROM_STR("application/atom+xml"); }
+  else
+  { return AZ_SPAN_LITERAL_FROM_STR("application/json"); }
+}
         
-        az_span getResponseType_az_span(ResponseType pResponseType)
-        {
-          if (pResponseType == returnContent)
-            { return AZ_SPAN_LITERAL_FROM_STR("return-content"); }
-            else
-            { return AZ_SPAN_LITERAL_FROM_STR("return-no-content"); }
-        }
+az_span getResponseType_az_span(ResponseType pResponseType)
+{
+  if (pResponseType == returnContent)
+  { return AZ_SPAN_LITERAL_FROM_STR("return-content"); }
+  else
+  { return AZ_SPAN_LITERAL_FROM_STR("return-no-content"); }
+}
 
-        /* Returns the number of days to the start of the specified year, taking leap
+/* Returns the number of days to the start of the specified year, taking leap
  * years into account, but not the shift from the Julian calendar to the
  * Gregorian calendar. Instead, it is as though the Gregorian calendar is
  * extrapolated back in time to a hypothetical "year zero".
