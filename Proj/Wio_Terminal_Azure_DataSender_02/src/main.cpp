@@ -213,7 +213,7 @@ void setup() {
     // Set Daylightsavingtime for central europe
     ntp.ruleDST("CEST", Last, Sun, Mar, 2, 120); // last sunday in march 2:00, timetone +120min (+1 GMT + 1h summertime offset)
     ntp.ruleSTD("CET", Last, Sun, Oct, 3, 60); // last sunday in october 3:00, timezone +60min (+1 GMT)
-    ntp.updateInterval(60000);  // Update every minute
+    ntp.updateInterval(3000000);  // Update every 30 minutes
     
     
     lcd_log_line((char *)ntp.formattedTime("%d. %B %Y"));    // dd. Mmm yyyy
@@ -445,7 +445,7 @@ void loop() {
    //delay(200);
 
    DateTime dateTimeUTCNow = sysTime.getTime();
-   if (ntp.update())
+   if (ntp.update())     // if update interval has expired
    {
        dateTimeUTCNow = DateTime((uint16_t) ntp.year(), (uint8_t)ntp.month(), (uint8_t)ntp.day(),
                 (uint8_t)ntp.hours(), (uint8_t)ntp.minutes(), (uint8_t)ntp.seconds());
@@ -455,7 +455,6 @@ void loop() {
    }
 
 TableClient table(myCloudStorageAccountPtr, myX509Certificate, httpPtr);
-
 
 int timeZoneOffsetUTC = ntp.isDST() ? TIMEZONE + DSTOFFSET : TIMEZONE;
 char sampleTime[25] {0};

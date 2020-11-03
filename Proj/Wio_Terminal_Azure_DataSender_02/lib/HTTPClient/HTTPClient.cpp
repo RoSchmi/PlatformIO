@@ -985,6 +985,8 @@ bool HTTPClient::hasHeader(const char* name)
  */
 bool HTTPClient::connect(void)
 {
+    //RoSchmi
+    //volatile bool connectState = connected();
     if(connected()) {
         if(_reuse) {
             log_d("already connected, reusing connection");

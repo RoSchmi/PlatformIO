@@ -269,7 +269,7 @@ AZ_NODISCARD az_result az_storage_tables_upload(
       _az_RETURN_IF_FAILED(az_http_request_append_header(
       &request, AZ_STORAGE_TABLES_HEADER_AUTHORIZATION, authorizationHeader));
 
-az_span fakeContentMd5 = AZ_SPAN_LITERAL_FROM_STR("123456784534");
+//az_span fakeContentMd5 = AZ_SPAN_LITERAL_FROM_STR("123456784534");
 
 _az_RETURN_IF_FAILED(az_http_request_append_header(
       &request, AZ_STORAGE_TABLES_HEADER_CONTENT_MD5, contentMd5));
@@ -296,8 +296,8 @@ _az_RETURN_IF_FAILED(az_http_request_append_header(
 
 
 // Add connection Close header
-//  _az_RETURN_IF_FAILED(
-//      az_http_request_append_header(&request, AZ_HTTP_HEADER_CONNECTION, AZ_HTTP_CONNECTION_CLOSE));
+  _az_RETURN_IF_FAILED(
+      az_http_request_append_header(&request, AZ_HTTP_HEADER_CONNECTION, AZ_HTTP_CONNECTION_CLOSE));
 
 
   uint8_t content_length[_az_INT64_AS_STR_BUFFER_SIZE] = { 0 };

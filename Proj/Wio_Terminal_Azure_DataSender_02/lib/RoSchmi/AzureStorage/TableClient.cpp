@@ -409,6 +409,7 @@ az_span_copy_u8(remainder, 0);
   // To save memory set buffer address to 0x2002A000
    uint8_t * responseBufferAddr = (uint8_t *)RESPONSE_BUFFER_MEMORY_ADDR;
   az_span response_az_span = az_span_create(responseBufferAddr, RESPONSE_BUFFER_LENGTH);
+  //az_span_fill(response_az_span, 0);
 
   az_http_response http_response;
   if (az_result_failed(az_http_response_init(&http_response, response_az_span)))
@@ -431,9 +432,8 @@ az_span_copy_u8(remainder, 0);
 
     az_http_response_status_line statusLine;
 
-    az_result result = az_http_response_get_status_line(&http_response, &statusLine);
-
-  return statusLine.status_code;
+    az_result result = az_http_response_get_status_line(&http_response, &statusLine);    
+    return statusLine.status_code; 
 }      
 
 void appendCharArrayToSpan(az_span targetSpan, const size_t maxTargetLength, const size_t startIndex, size_t *outEndIndex, const char * stringToAppend)
