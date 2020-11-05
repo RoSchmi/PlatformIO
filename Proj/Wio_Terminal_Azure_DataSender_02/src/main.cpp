@@ -21,8 +21,6 @@
 
 #include <Time/SysTime.h>
 
-
-
 #include <azure/core/az_platform.h>
 //#include <platform.h>
 #include <azure/core/az_config_internal.h>
@@ -113,6 +111,7 @@ WiFiClientSecure wifi_client;
 
 WiFiUDP wifiUdp;
 NTP ntp(wifiUdp);
+
 HTTPClient http;
 HTTPClient * httpPtr = &http;
 
@@ -270,7 +269,7 @@ if (augmentTableNameWithYear)
 //const char * tableName = "AnalogTestValues2020";
 
 // RoSchmi: do not delete
-// az_http_status_code theResult = createTable(myCloudStorageAccountPtr, myX509Certificate, tableName);
+//az_http_status_code theResult = createTable(myCloudStorageAccountPtr, myX509Certificate, (char *)tableName.c_str());
 
 char * sampleValue_1 = (char *)"17.1";
 char * sampleValue_2 = (char *)"17.2";
@@ -572,9 +571,12 @@ void makePartitionKey(const char * partitionKeyprefix, bool augmentWithYear, az_
 az_http_status_code insertTableEntity(CloudStorageAccount *pAccountPtr, X509Certificate pCaCert, const char * pTableName, TableEntity pTableEntity, char * outInsertETag)
 
 {
+    //HTTPClient http2;
+    //HTTPClient * httpPtr2 = &http2;
+
     TableClient table(pAccountPtr, pCaCert,  httpPtr);
 
-    char codeString[20] {0};
+    char codeString[25] {0};
     az_http_status_code statusCode = table.InsertTableEntity(pTableName, pTableEntity,  contApplicationIatomIxml, acceptApplicationIjson, returnContent, false); 
     if ((statusCode == AZ_HTTP_STATUS_CODE_NO_CONTENT) || (statusCode == AZ_HTTP_STATUS_CODE_CREATED))
     { 
@@ -585,6 +587,7 @@ az_http_status_code insertTableEntity(CloudStorageAccount *pAccountPtr, X509Cert
     {
       sprintf(codeString, "%s %i", "Insertion failed: ", az_http_status_code(statusCode));    
       lcd_log_line((char *)codeString);
+      delay(10000);
     }
     volatile int dummy7765 = 1;
 }

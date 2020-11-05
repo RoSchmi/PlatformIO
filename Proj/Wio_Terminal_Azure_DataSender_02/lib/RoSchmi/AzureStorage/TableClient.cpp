@@ -14,6 +14,8 @@
 
 #include <azure/core/az_span.h>
 
+WiFiClientSecure * _wifiClient;
+
 CloudStorageAccount  * _accountPtr;
 HTTPClient * _httpPtr;
 const char * _caCert;
@@ -127,6 +129,7 @@ TableClient::TableClient(CloudStorageAccount * account, const char * caCert, HTT
     _accountPtr = account;
     _caCert = caCert;
     _httpPtr = httpClient;
+    //_wifiClient = wifiClient;
 }
 TableClient::~TableClient()
 {};
@@ -258,6 +261,7 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
   uploadOptions._internal.perferType = responseTypeAzSpan;
 
   setHttpClient(_httpPtr);
+  //setWiFiClient(_wifiClient);
   setCaCert(_caCert);
 
   az_result const table_create_result
@@ -425,6 +429,7 @@ az_span_copy_u8(remainder, 0);
 
   //set HTTPClient and certificate
   setHttpClient(_httpPtr);
+  //setWiFiClient(_wifiClient);
   setCaCert(_caCert);
 
   az_result const entity_upload_result

@@ -28,8 +28,10 @@ extern "C"
 #endif // __cplusplus
 */
 
+extern WiFiClientSecure wifi_client; 
 
 HTTPClient *  deviceHttp = NULL;
+WiFiClientSecure * deviceWifiClient = NULL;
 
 const char * _caCertificate;
 
@@ -89,8 +91,23 @@ volatile size_t headerSize = strlen(theHeader_str);
     String resource = foundSlash != -1 ? urlString.substring(foundSlash) : "";
     uint16_t port = protocol == "http" ? 80 : 443;
 
-    //deviceHttp->setReuse(false);
+    deviceHttp->setReuse(true);
 
+    deviceHttp->end();
+    
+    
+    if (!deviceHttp->connected())
+    {
+
+      volatile int dummy634 = 1;
+    }
+    else
+    {
+      volatile int dummy635 = 1;
+    }
+    
+    
+    
     if (port == 80)
     {
       
@@ -131,17 +148,14 @@ volatile size_t headerSize = strlen(theHeader_str);
     
 
     if (az_span_is_content_equal(requMethod, AZ_SPAN_LITERAL_FROM_STR("POST")))
-     {
-       
-       const char * headerKeys[] = {"ETag", "Date", "x-ms-request-id", "x-ms-version", "Content-Type"};       
-      deviceHttp->collectHeaders(headerKeys, 5);
+    {       
+        const char * headerKeys[] = {"ETag", "Date", "x-ms-request-id", "x-ms-version", "Content-Type"};       
+        deviceHttp->collectHeaders(headerKeys, 5);
       
-      int httpCode = deviceHttp->POST((char *)theBody);
-      
-      delay(1);
-      
-
-      //if (httpCode > 0) { //Check for the returning code 
+        int httpCode = deviceHttp->POST((char *)theBody);
+          
+       //delay(1);
+           
         String payload = deviceHttp->getString();
         volatile size_t responseBodySize = deviceHttp->getSize();
         size_t respHeaderCount = deviceHttp->headers();      
@@ -168,26 +182,20 @@ volatile size_t headerSize = strlen(theHeader_str);
           }
           appendResult = az_http_response_append(ref_response, az_span_create_from_str((char *)"\r\n"));
           appendResult = az_http_response_append(ref_response, az_span_create_from_str((char *)deviceHttp->getString().c_str()));
-
         }
         else
         {
+          // Request failed, set StatusCode to 400
           sprintf((char *)httpStatusLine, "%s%i%s", "HTTP/1.1 ", 400, " ***\r\n");
           appendResult = az_http_response_append(ref_response, az_span_create_from_str((char *)httpStatusLine));
           appendResult = az_http_response_append(ref_response, az_span_create_from_str((char *)"\r\n"));
           appendResult = az_http_response_append(ref_response, az_span_create_from_str((char *)"Request failed\r\n\0"));
         }
-        
-      
-        
-        
-       
-        
-        
-        az_http_response_status_line statusLine;
+              
+        //az_http_response_status_line statusLine;
 
-        az_result statResult = az_http_response_get_status_line(ref_response, &statusLine);
-        volatile az_span reasonPhrase = statusLine.reason_phrase;
+        //az_result statResult = az_http_response_get_status_line(ref_response, &statusLine);
+        //volatile az_span reasonPhrase = statusLine.reason_phrase;
 
         String partMessage;
         while (indexCtr < length)
@@ -196,21 +204,6 @@ volatile size_t headerSize = strlen(theHeader_str);
           indexCtr += pageWidth;
         } 
        
-
-        
-        volatile int dummy3467 = 1;
-      //}
-      /*
-      else {
-
-        char httpStatusLine[20] {0};      
-        sprintf((char *)httpStatusLine, "%s%i%s", "HTTP/1.1 ", 502, " ***\r\n");
-        az_result appendResult;
-        appendResult = az_http_response_append(ref_response, az_span_create_from_str((char *)httpStatusLine));
-
-        volatile int dummy2572 = 1;
-      }
-      */
     }
     else
     {
