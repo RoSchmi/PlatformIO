@@ -3,7 +3,25 @@
 #ifndef _CONFIG_H
 #define _CONFIG_H
 
+// This file is for not secret user specific configurations
+//
+// Please set your timezone offset (time difference from your zone 
+// to UTC time in units of minutes) and set the time difference
+// used for DaylightSaving Time in minutes
+// The begin and end of Daylightsaving time actually has to be defined
+// in the code in main.cpp
+//
+// Please select the transport protocol, http or https (recommended)
+// For https you must include the Root Certificate of your Azure Account
+// like here the baltimore_root_ca
+//
+// The credentials of your WiFi router and the name and key of your
+// Azure Account have to be set in the file config_secret.h 
 
+#define TIMEZONE 60             // TimeZone time difference to UTC in minutes
+#define DSTOFFSET 60            // DaylightSaving Time offset in minutes
+
+#define TRANSPORT_PROTOCOL 1   // 0 = http, 1 = https  
 
 const char *baltimore_root_ca =
 "-----BEGIN CERTIFICATE-----\n"
@@ -28,4 +46,4 @@ const char *baltimore_root_ca =
 "R9I4LtD+gdwyah617jzV/OeBHRnDJELqYzmp\n"
 "-----END CERTIFICATE-----";
 
-#endif // _CONFIG_SECRET_H
+#endif // _CONFIG_H

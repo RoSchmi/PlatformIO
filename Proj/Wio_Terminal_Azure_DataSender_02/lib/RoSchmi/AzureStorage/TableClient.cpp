@@ -261,7 +261,6 @@ az_http_status_code TableClient::CreateTable(const char * tableName, ContType pC
   uploadOptions._internal.perferType = responseTypeAzSpan;
 
   setHttpClient(_httpPtr);
-  //setWiFiClient(_wifiClient);
   setCaCert(_caCert);
 
   az_result const table_create_result
@@ -429,7 +428,6 @@ az_span_copy_u8(remainder, 0);
 
   //set HTTPClient and certificate
   setHttpClient(_httpPtr);
-  //setWiFiClient(_wifiClient);
   setCaCert(_caCert);
 
   az_result const entity_upload_result

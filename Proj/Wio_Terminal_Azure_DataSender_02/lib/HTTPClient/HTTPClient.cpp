@@ -1,7 +1,7 @@
 #include <HardwareSerial.h>
 #include <Arduino.h>
-/**
-* HTTPClient.cpp
+
+/* HTTPClient.cpp
 *
 * Created on: 02.11.2015
 *

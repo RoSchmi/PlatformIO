@@ -10,16 +10,11 @@
 #include <azure/core/az_span.h>
 #include <azure/core/internal/az_result_internal.h>
 #include <azure/core/internal/az_span_internal.h>
-
 #include <stdlib.h>
-
 #include <Arduino.h>
 #include <string.h>
-
 #include <azure/core/az_platform.h>
-
 #include <az_wioterminal_roschmi.h>
-
 
 /*
 #ifdef __cplusplus
@@ -28,8 +23,6 @@ extern "C"
 #endif // __cplusplus
 */
 
-extern WiFiClientSecure wifi_client; 
-
 HTTPClient *  deviceHttp = NULL;
 WiFiClientSecure * deviceWifiClient = NULL;
 
@@ -37,7 +30,7 @@ const char * _caCertificate;
 
 
 /**
- * @brief uses AZ_HTTP_BUILDER to set up CURL request and perform it.
+ * @brief uses AZ_HTTP_BUILDER to set up request and perform it.
  *
  * @param request an internal http builder with data to build and send http request
  * @param ref_response pre-allocated buffer where http response will be written
@@ -52,14 +45,11 @@ az_http_client_send_request(az_http_request const* request, az_http_response* re
 // Working with spans
 //https://github.com/Azure/azure-sdk-for-c/tree/master/sdk/docs/core#working-with-spans
   
-  
   az_http_method requMethod = request->_internal.method;
   int32_t max_header_count = request->_internal.max_headers;
   size_t headerCount = az_http_request_headers_count(request);
 
-  
-
-  int32_t theQueryStart = request->_internal.query_start;
+ // int32_t theQueryStart = request->_internal.query_start;
 
 // Code to copy all headers into one string, actually not needed
 /*
@@ -72,8 +62,7 @@ volatile size_t headerSize = strlen(theHeader_str);
      
     char urlBuffer[az_span_size(request->_internal.url) + 2] {0};
     az_span_to_str((char *)urlBuffer, sizeof(urlBuffer) -1, request->_internal.url);
-
-    //String urlString = (char *)urlBuffer;
+    
     String urlString = (char *)urlBuffer;
 
     int foundProtocol = urlString.indexOf(':');
@@ -91,22 +80,9 @@ volatile size_t headerSize = strlen(theHeader_str);
     String resource = foundSlash != -1 ? urlString.substring(foundSlash) : "";
     uint16_t port = protocol == "http" ? 80 : 443;
 
-    deviceHttp->setReuse(true);
+    //deviceHttp->setReuse(true);
 
-    deviceHttp->end();
-    
-    
-    if (!deviceHttp->connected())
-    {
-
-      volatile int dummy634 = 1;
-    }
-    else
-    {
-      volatile int dummy635 = 1;
-    }
-    
-    
+    //deviceHttp->end();
     
     if (port == 80)
     {
@@ -117,8 +93,6 @@ volatile size_t headerSize = strlen(theHeader_str);
     {
       deviceHttp->begin(host, port, resource, _caCertificate);
     }
-    
-    //deviceHttp->setUserAgent("RsWioClient");
     
     char name_buffer[MAX_HEADERNAME_LENGTH +2] {0};
     char value_buffer[MAX_HEADERVALUE_LENGTH +2] {0};
@@ -145,8 +119,6 @@ volatile size_t headerSize = strlen(theHeader_str);
     
     az_span_to_str((char *)theBody, bodySize + 1, request->_internal.body);
     
-    
-
     if (az_span_is_content_equal(requMethod, AZ_SPAN_LITERAL_FROM_STR("POST")))
     {       
         const char * headerKeys[] = {"ETag", "Date", "x-ms-request-id", "x-ms-version", "Content-Type"};       
@@ -154,21 +126,21 @@ volatile size_t headerSize = strlen(theHeader_str);
       
         int httpCode = deviceHttp->POST((char *)theBody);
           
-       //delay(1);
-           
-        String payload = deviceHttp->getString();
+        delay(1); 
+        //String payload = deviceHttp->getString();
+
         volatile size_t responseBodySize = deviceHttp->getSize();
         size_t respHeaderCount = deviceHttp->headers();      
-        int length = payload.length();
+        //int length = payload.length();
 
         int indexCtr = 0;
         int pageWidth = 50;
-        Serial.println(httpCode);
+        
         delay(2000);
         
         az_result appendResult;
         char httpStatusLine[20] {0};
-        if (httpCode > 0) 
+        if (httpCode > 0)  // Request was successful
         {      
           sprintf((char *)httpStatusLine, "%s%i%s", "HTTP/1.1 ", httpCode, " ***\r\n");
           appendResult = az_http_response_append(ref_response, az_span_create_from_str((char *)httpStatusLine));
@@ -191,19 +163,29 @@ volatile size_t headerSize = strlen(theHeader_str);
           appendResult = az_http_response_append(ref_response, az_span_create_from_str((char *)"\r\n"));
           appendResult = az_http_response_append(ref_response, az_span_create_from_str((char *)"Request failed\r\n\0"));
         }
-              
-        //az_http_response_status_line statusLine;
 
-        //az_result statResult = az_http_response_get_status_line(ref_response, &statusLine);
-        //volatile az_span reasonPhrase = statusLine.reason_phrase;
+        deviceHttp->end();
+        
+        /*
+        char buffer[1000];
+        az_span content = AZ_SPAN_FROM_BUFFER(buffer);
 
+        az_http_response_get_body(ref_response, &content);
+
+        volatile int dummy349 = 1;
+        */
+
+        //  Here you can see the received payload in chunks 
+        // if you set a breakpoint in the loop 
+        
+        /*
         String partMessage;
         while (indexCtr < length)
         {
           partMessage = payload.substring(indexCtr, indexCtr + pageWidth);
           indexCtr += pageWidth;
         } 
-       
+        */
     }
     else
     {
@@ -218,8 +200,8 @@ volatile size_t headerSize = strlen(theHeader_str);
       
     }
     
-    deviceHttp->end();
-    delay(500);
+    
+    //delay(500);
    return AZ_OK;
 }
 
@@ -236,7 +218,6 @@ AZ_NODISCARD int64_t az_platform_clock_msec()
    return (int64_t)((int64_t)clockCyclesPerMicrosecond() * 1000L); 
 
 }
-
 
 //void az_platform_sleep_msec(int32_t milliseconds) { (void)milliseconds; }
 // For Arduino (Wio Terminal):
@@ -290,7 +271,6 @@ dev_az_http_client_build_headers(az_http_request const* request, az_span ref_hea
   return AZ_OK;
 }
 
-
 /**
  * @brief writes a header key and value to a buffer as a 0-terminated string and using a separator
  * span in between. Returns error as soon as any of the write operations fails
@@ -318,41 +298,3 @@ static AZ_NODISCARD az_result dev_az_span_append_header_to_buffer(
   az_span_copy_u8(writable_buffer, 0);
   return AZ_OK;
 }
-/*
-volatile byte c0 = headers_buffer[0];
-              volatile byte c1 = headers_buffer[1];
-              volatile byte c2 = headers_buffer[2];
-              volatile byte c3 = headers_buffer[3];
-              volatile byte c4 = headers_buffer[4];
-              volatile byte c5 = headers_buffer[5];
-              volatile byte c6 = headers_buffer[6];
-              volatile byte c7 = headers_buffer[7];
-              volatile byte c8 = headers_buffer[8];
-              volatile byte c9 = headers_buffer[9];
-              volatile byte c10 = headers_buffer[10];
-              volatile byte c11 = headers_buffer[11];
-              volatile byte c12 = headers_buffer[12];
-              volatile byte c13 = headers_buffer[13];
-              volatile byte c14 = headers_buffer[14];
-              volatile byte c15 = headers_buffer[15];
-              volatile byte c16 = headers_buffer[16];
-              volatile byte c17 = headers_buffer[17];
-              volatile byte c18 = headers_buffer[18];
-              volatile byte c19 = headers_buffer[19];
-              volatile byte c20 = headers_buffer[20];
-              volatile byte c21 = headers_buffer[21];
-              volatile byte c22 = headers_buffer[22];
-              volatile byte c23 = headers_buffer[23];
-              volatile byte c24 = headers_buffer[24];
-              volatile byte c54 = headers_buffer[25];
-              volatile byte c55 = headers_buffer[26];
-              volatile byte c56 = headers_buffer[27];
-              volatile byte c57 = headers_buffer[28];
-              volatile byte c58 = headers_buffer[29];
-              volatile byte c59 = headers_buffer[30];
-              volatile byte c60 = headers_buffer[31];
-              volatile byte c61 = headers_buffer[32];
-              volatile byte c62 = headers_buffer[33];
-              volatile byte c63 = headers_buffer[34];
-              volatile byte c64 = headers_buffer[35];
-              */
