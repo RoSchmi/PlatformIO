@@ -470,6 +470,8 @@ void GetDateHeader(DateTime time, char * stamp, char * x_ms_time)
 {
   int32_t dayOfWeek = dow((int32_t)time.year() -30, (int32_t)time.month(), (int32_t)time.day());
 
+  dayOfWeek = dayOfWeek == 7 ? 0 : dayOfWeek;  // Switch Sunday, it comes as 7 and must be 0
+
   struct tm timeinfo {
                       (int)time.second(),
                       (int)time.minute(),

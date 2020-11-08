@@ -18,6 +18,8 @@
 
 #include <Time/SysTime.h>
 
+#include <SensorData/DataContainerWio.h>
+
 #include <azure/core/az_platform.h>
 //#include <platform.h>
 #include <azure/core/az_config_internal.h>
@@ -76,6 +78,12 @@ const bool augmentPartitionKey = true;
 // The TableName can be augmented with the actual year (recommended)
 const bool augmentTableNameWithYear = true;
 
+// Define Datacontainer with SendInterval and InvalidateInterval as defined in config.h
+
+int sendIntervalSeconds = (SENDINTERVAL_MINUTES * 60) < 1 ? 1 : (SENDINTERVAL_MINUTES * 60);
+
+DataContainerWio dataContainer(TimeSpan(sendIntervalSeconds), TimeSpan(0, 0, INVALIDATEINTERVAL_MINUTES % 60, 0), (float)MIN_DATAVALUE, (float)MAX_DATAVALUE, (float)MAGIC_NUMBER_INVALID);
+
 TFT_eSPI tft;
 int current_text_line = 0;
 
@@ -84,14 +92,19 @@ int current_text_line = 0;
 #define LCD_FONT FreeSans9pt7b
 #define LCD_LINE_HEIGHT 18
 
-volatile int counter = 0;
-volatile int counter2 = 0;
+uint32_t loopCounter = 0;
+uint32_t insertCounter = 0;
+
+bool ledState = false;
 char strData[100];
+
+DateTime dateTimeUTCNow;
+
 
 const char *ssid = IOT_CONFIG_WIFI_SSID;
 const char *password = IOT_CONFIG_WIFI_PASSWORD;
 
-//static bool UseHttps_State = true;
+
 
 WiFiClientSecure wifi_client;
 
@@ -126,6 +139,7 @@ void lcd_log_line(char* line) {
 }
 
 // forward declarations
+DateTime actualizeSysTimeFromNtpIfNeeded();
 void createSampleTime(DateTime dateTimeUTCNow, int timeZoneOffsetUTC, char * sampleTime);
 az_http_status_code  createTable(CloudStorageAccount * myCloudStorageAccountPtr, X509Certificate myX509Certificate, const char * tableName);
 az_http_status_code CreateTable( const char * tableName, ContType pContentType, AcceptType pAcceptType, ResponseType pResponseType, bool);
@@ -142,7 +156,7 @@ void setup()
   tft.setTextColor(TFT_BLACK);
 
   pinMode(LED_BUILTIN, OUTPUT);
-  lcd_log_line((char *)"Starting");
+  lcd_log_line((char *)"Starting Up");
   
   Serial.begin(9600);
   Serial.println("\r\nHello, I'm starting ");
@@ -199,14 +213,14 @@ void setup()
   // Set Daylightsavingtime for central europe
   ntp.ruleDST("CEST", Last, Sun, Mar, 2, 120); // last sunday in march 2:00, timetone +120min (+1 GMT + 1h summertime offset)
   ntp.ruleSTD("CET", Last, Sun, Oct, 3, 60); // last sunday in october 3:00, timezone +60min (+1 GMT)
-  ntp.updateInterval(600000);  // Update every 10 minutes
+  ntp.updateInterval(600000);  // Update from ntp every 10 minutes
      
   lcd_log_line((char *)ntp.formattedTime("%d. %B %Y"));    // dd. Mmm yyyy
   lcd_log_line((char *)ntp.formattedTime("%A %T"));        // Www hh:mm:ss
 
   //DateTime now = DateTime(F(__DATE__), F(__TIME__));
   //DateTime now = DateTime(F((char *)ntp.formattedTime("%d. %B %Y")), F((char *)ntp.formattedTime("%A %T")));
-  DateTime dateTimeUTCNow = DateTime((uint16_t) ntp.year(), (uint8_t)ntp.month(), (uint8_t)ntp.day(),
+  dateTimeUTCNow = DateTime((uint16_t) ntp.year(), (uint8_t)ntp.month(), (uint8_t)ntp.day(),
                 (uint8_t)ntp.hours(), (uint8_t)ntp.minutes(), (uint8_t)ntp.seconds());
 
   // Set rtc to UTC Time
@@ -221,6 +235,7 @@ void setup()
 
 
   delay(5000);
+  // Clear screen
   current_text_line = 0;
   tft.fillScreen(TFT_WHITE);
   
@@ -266,7 +281,8 @@ void setup()
   }
   */
 
-  TableClient table(myCloudStorageAccountPtr, myX509Certificate, httpPtr);
+  dateTimeUTCNow = sysTime.getTime();
+  //TableClient table(myCloudStorageAccountPtr, myX509Certificate, httpPtr);
 
   String tableName = "AnalogTestValues";
   if (augmentTableNameWithYear)
@@ -277,89 +293,109 @@ void setup()
   // RoSchmi: do not delete
   // The following line creates a table in the Azure Storage Account defined in config.h
   az_http_status_code theResult = createTable(myCloudStorageAccountPtr, myX509Certificate, (char *)tableName.c_str());
-
+  
 }
 
 void loop() 
 {
   // Actualize Systemtime from ntp if update interval has expired
+    // If exact datetime is critical, take the actualization outside the if loop
+    //DateTime dateTimeUTCNow = actualizeSysTimeFromNtpIfNeeded();
+
+if (loopCounter++ % 2000 == 0)    //Blink LED every 2000 th round to signal that App is running
+  {
+    ledState = !ledState;
+    digitalWrite(LED_BUILTIN, ledState);
+
+    // Actualize Systemtime from ntp if update interval has expired
+    // If exact datetime is critical, take the actualization outside the if loop
+    dateTimeUTCNow = actualizeSysTimeFromNtpIfNeeded();
+
+    // delay(20000);   // Outcommented! Only for test provokes a watchdog reboot
+  }
+
+  dataContainer.SetNewValue(0, dateTimeUTCNow, 17.2);
+  dataContainer.SetNewValue(1, dateTimeUTCNow, 17.3);
+  dataContainer.SetNewValue(2, dateTimeUTCNow, 17.4);
+  dataContainer.SetNewValue(3, dateTimeUTCNow, 17.5);
+
+  
+  
+  if (dataContainer.hasToBeSent())
+  {
+    SampleValueSet sampleValueSet = dataContainer.getSampleValuesAndReset(dateTimeUTCNow);
+
+    // Create time value to be stored in table rows (local time and offset to UTC) 
+    int timeZoneOffsetUTC = ntp.isDST() ? TIMEZONE + DSTOFFSET : TIMEZONE;
+    char sampleTime[25] {0};
+    createSampleTime(sampleValueSet.LastSendTime, timeZoneOffsetUTC, (char *)sampleTime);
+
+    // Create name of the table (arbitrary name + actual year, like: AnalogTestValues2020)
+    String tableName = "AnalogTestValues";  
+    if (augmentTableNameWithYear)
+    {
+      tableName += (dateTimeUTCNow.year() - 30);     
+    }
+
+    // Define 4 sample values to be stored in a table row
+    char * sampleValue_1 = (char *)"17.1";
+    char * sampleValue_2 = (char *)"17.2";
+    char * sampleValue_3 = (char *)"17.3";
+    char * sampleValue_4 = (char *)"17.4";
+
+    // Besides PartitionKey and RowKey We have 5 properties to be stored in a row
+    // (SampleTime and 4 Samplevalues)
+    size_t propertyCount = 5;
+    EntityProperty AnalogPropertiesArray[5];
+    AnalogPropertiesArray[0] = (EntityProperty)TableEntityProperty((char *)"SampleTime", (char *) sampleTime, (char *)"Edm.String");
+    AnalogPropertiesArray[1] = (EntityProperty)TableEntityProperty((char *)"T_1", sampleValue_1, (char *)"Edm.String");
+    AnalogPropertiesArray[2] = (EntityProperty)TableEntityProperty((char *)"T_2", sampleValue_2, (char *)"Edm.String");
+    AnalogPropertiesArray[3] = (EntityProperty)TableEntityProperty((char *)"T_3", sampleValue_3, (char *)"Edm.String");
+    AnalogPropertiesArray[4] = (EntityProperty)TableEntityProperty((char *)"T_4", sampleValue_4, (char *)"Edm.String");
+  
+    // Create the PartitionKey (special format)
+    char partKeySpan[25] {0};
+    size_t partitionKeyLength = 0;
+    az_span partitionKey = AZ_SPAN_FROM_BUFFER(partKeySpan);
+    makePartitionKey(analogTablePartPrefix, augmentPartitionKey, partitionKey, &partitionKeyLength);
+    partitionKey = az_span_slice(partitionKey, 0, partitionKeyLength);
+
+    // Create the RowKey (special format)
+    char rowKeySpan[25] {0};
+    size_t rowKeyLength = 0;
+    az_span rowKey = AZ_SPAN_FROM_BUFFER(rowKeySpan);
+    makeRowKey(dateTimeUTCNow, rowKey, &rowKeyLength);
+    rowKey = az_span_slice(rowKey, 0, rowKeyLength);
+  
+    // Create TableEntity consisting of the above created incrediants
+    AnalogTableEntity analogTableEntity(partitionKey, rowKey, az_span_create_from_str((char *)sampleTime),  AnalogPropertiesArray, propertyCount);
+    char EtagBuffer[5] {0};
+  
+    sprintf(strData, "   Trying to insert %u", insertCounter);   
+    lcd_log_line(strData);
+
+    insertCounter++;
+    // Store Entity to Azure Cloud
+    az_http_status_code insertResult = insertTableEntity(myCloudStorageAccountPtr, myX509Certificate, (char *)tableName.c_str(), analogTableEntity, (char *)EtagBuffer);
+
+  
+  }
+  
+  loopCounter++;
+}
+
+DateTime actualizeSysTimeFromNtpIfNeeded()
+{
   DateTime dateTimeUTCNow = sysTime.getTime();
   if (ntp.update())     // if update interval has expired
   {
     dateTimeUTCNow = DateTime((uint16_t) ntp.year(), (uint8_t)ntp.month(), (uint8_t)ntp.day(),
-          (uint8_t)ntp.hours(), (uint8_t)ntp.minutes(), (uint8_t)ntp.seconds());
-
-    // Set rtc to UTC Time
+          (uint8_t)ntp.hours(), (uint8_t)ntp.minutes(), (uint8_t)ntp.seconds());  
     sysTime.setTime(dateTimeUTCNow);
   }
-  
-  // Create time value to be stored in table rows (local time and offset to UTC) 
-  int timeZoneOffsetUTC = ntp.isDST() ? TIMEZONE + DSTOFFSET : TIMEZONE;
-  char sampleTime[25] {0};
-  createSampleTime(dateTimeUTCNow, timeZoneOffsetUTC, (char *)sampleTime);
-
-  // Create name of the table (arbitrary name + actual year, like: AnalogTestValues2020)
-  String tableName = "AnalogTestValues";  
-  if (augmentTableNameWithYear)
-  {
-    tableName += (dateTimeUTCNow.year() - 30);
-  }
-
-  // Define 4 sample values to be stored in a table row
-  char * sampleValue_1 = (char *)"17.1";
-  char * sampleValue_2 = (char *)"17.2";
-  char * sampleValue_3 = (char *)"17.3";
-  char * sampleValue_4 = (char *)"17.4";
-
-  // Besides PartitionKey and RowKey We have 5 properties to be stored in a row
-  // (SampleTime and 4 Samplevalues)
-  size_t propertyCount = 5;
-  EntityProperty AnalogPropertiesArray[5];
-  AnalogPropertiesArray[0] = (EntityProperty)TableEntityProperty((char *)"SampleTime", (char *) sampleTime, (char *)"Edm.String");
-  AnalogPropertiesArray[1] = (EntityProperty)TableEntityProperty((char *)"T_1", sampleValue_1, (char *)"Edm.String");
-  AnalogPropertiesArray[2] = (EntityProperty)TableEntityProperty((char *)"T_2", sampleValue_2, (char *)"Edm.String");
-  AnalogPropertiesArray[3] = (EntityProperty)TableEntityProperty((char *)"T_3", sampleValue_3, (char *)"Edm.String");
-  AnalogPropertiesArray[4] = (EntityProperty)TableEntityProperty((char *)"T_4", sampleValue_4, (char *)"Edm.String");
-  
-  // Create the PartitionKey (special format)
-  char partKeySpan[25] {0};
-  size_t partitionKeyLength = 0;
-  az_span partitionKey = AZ_SPAN_FROM_BUFFER(partKeySpan);
-  makePartitionKey(analogTablePartPrefix, augmentPartitionKey, partitionKey, &partitionKeyLength);
-  partitionKey = az_span_slice(partitionKey, 0, partitionKeyLength);
-
-  // Create the RowKey (special format)
-  char rowKeySpan[25] {0};
-  size_t rowKeyLength = 0;
-  az_span rowKey = AZ_SPAN_FROM_BUFFER(rowKeySpan);
-  makeRowKey(dateTimeUTCNow, rowKey, &rowKeyLength);
-  rowKey = az_span_slice(rowKey, 0, rowKeyLength);
-  
-  // Create TableEntity consisting of the above created incrediants
-  AnalogTableEntity analogTableEntity(partitionKey, rowKey, az_span_create_from_str((char *)sampleTime),  AnalogPropertiesArray, propertyCount);
-  char EtagBuffer[5] {0};
-  
-  // Store Entity to Azure Cloud
-  az_http_status_code insertResult = insertTableEntity(myCloudStorageAccountPtr, myX509Certificate, (char *)tableName.c_str(), analogTableEntity, (char *)EtagBuffer);
-  
-  // Wait some time before repeat
-  for (int i = 0; i < 5; i++)
-  {
-    digitalWrite(LED_BUILTIN, HIGH);   
-    delay(30000);
-    digitalWrite(LED_BUILTIN, LOW); 
-    delay(30000);
-    sprintf(strData, "Wait %u", i);   
-    lcd_log_line(strData);
-    //Serial.print("Wait ");
-    //Serial.println(i);
-  }
-    sprintf(strData, "   Trying to insert %u", counter);   
-    lcd_log_line(strData);
-    //Serial.print("   Trying to insert ");
-    //Serial.println(counter);
-    counter++;
+  return dateTimeUTCNow;
 }
+
 
 void createSampleTime(DateTime dateTimeUTCNow, int timeZoneOffsetUTC, char * sampleTime)
 {
