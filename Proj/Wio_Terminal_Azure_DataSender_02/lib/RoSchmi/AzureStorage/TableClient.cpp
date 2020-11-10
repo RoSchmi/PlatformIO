@@ -485,7 +485,7 @@ void GetTableXml(EntityProperty EntityProperties[], size_t propertyCount, az_spa
         
 void GetDateHeader(DateTime time, char * stamp, char * x_ms_time)
 {
-  int32_t dayOfWeek = dow((int32_t)time.year() -30, (int32_t)time.month(), (int32_t)time.day());
+  int32_t dayOfWeek = dow((int32_t)time.year(), (int32_t)time.month(), (int32_t)time.day());
 
   dayOfWeek = dayOfWeek == 7 ? 0 : dayOfWeek;  // Switch Sunday, it comes as 7 and must be 0
 
@@ -495,7 +495,7 @@ void GetDateHeader(DateTime time, char * stamp, char * x_ms_time)
                       (int)time.hour(),
                       (int)time.day(),
                       (int)time.month(),
-                      (int)(time.year() - 1900 - 30),                       
+                      (int)(time.year() - 1900),                       
                       (int)dayOfWeek,
                       0,                               
                       0};

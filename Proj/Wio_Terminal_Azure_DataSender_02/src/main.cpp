@@ -289,7 +289,7 @@ void setup()
   String tableName = "AnalogTestValues";
   if (augmentTableNameWithYear)
   {
-  tableName += (dateTimeUTCNow.year() - 30);
+  tableName += (dateTimeUTCNow.year());
   }
 
   // RoSchmi: do not delete
@@ -331,7 +331,7 @@ void loop()
     String tableName = "AnalogTestValues";  
     if (augmentTableNameWithYear)
     {
-      tableName += (dateTimeUTCNow.year() - 30);     
+      tableName += (dateTimeUTCNow.year());     
     }
 
     // Create an Array of here 5 Properties
@@ -474,14 +474,14 @@ void createSampleTime(DateTime dateTimeUTCNow, int timeZoneOffsetUTC, char * sam
   sprintf(TimeOffsetUTCString, " %c%03i", sign, timeZoneOffsetUTC);
   TimeSpan timespanOffsetToUTC = TimeSpan(0, hoursOffset, minutesOffset, 0);
   DateTime newDateTime = dateTimeUTCNow + timespanOffsetToUTC;
-  sprintf(sampleTime, "%02i/%02i/%04i %02i:%02i:%02i%s",newDateTime.month(), newDateTime.day(), newDateTime.year() - 30, newDateTime.hour(), newDateTime.minute(), newDateTime.second(), TimeOffsetUTCString);
+  sprintf(sampleTime, "%02i/%02i/%04i %02i:%02i:%02i%s",newDateTime.month(), newDateTime.day(), newDateTime.year(), newDateTime.hour(), newDateTime.minute(), newDateTime.second(), TimeOffsetUTCString);
 }
  
 void makeRowKey(DateTime actDate,  az_span outSpan, size_t *outSpanLength)
 {
   // formatting the RowKey (= reverseDate) this way to have the tables sorted with last added row upmost
   char rowKeyBuf[20] {0};
-  sprintf(rowKeyBuf, "%4i%02i%02i%02i%02i%02i", (10000 - actDate.year() - 30), (12 - actDate.month()), (31 - actDate.day()), (23 - actDate.hour()), (59 - actDate.minute()), (59 - actDate.second()));
+  sprintf(rowKeyBuf, "%4i%02i%02i%02i%02i%02i", (10000 - actDate.year()), (12 - actDate.month()), (31 - actDate.day()), (23 - actDate.hour()), (59 - actDate.minute()), (59 - actDate.second()));
   az_span retValue = az_span_create_from_str((char *)rowKeyBuf);
   az_span_copy(outSpan, retValue);
   *outSpanLength = retValue._internal.size;         
@@ -492,7 +492,7 @@ void makePartitionKey(const char * partitionKeyprefix, bool augmentWithYear, az_
   // if wanted, augment with year and month (12 - month for right order)
   DateTime dateTimeUTCNow = sysTime.getTime();                      
   char dateBuf[20] {0};
-  sprintf(dateBuf, "%s%d-%02d", partitionKeyprefix, (dateTimeUTCNow.year() - 30), (12 - dateTimeUTCNow.month()));                  
+  sprintf(dateBuf, "%s%d-%02d", partitionKeyprefix, (dateTimeUTCNow.year()), (12 - dateTimeUTCNow.month()));                  
   az_span ret_1 = az_span_create_from_str((char *)dateBuf);
   az_span ret_2 = az_span_create_from_str((char *)partitionKeyprefix);                       
   if (augmentWithYear == true)
