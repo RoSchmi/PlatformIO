@@ -4,5 +4,6 @@ Shows how to transfere sensor data to Azure Storage Tables. App running on the W
 In development, not stable
 
 This project is now discontinued, it is transferred to the new Seeed rpcWiFi
+https://github.com/RoSchmi/Wio_Terminal_Azure_DataSender_rpc
 
 
