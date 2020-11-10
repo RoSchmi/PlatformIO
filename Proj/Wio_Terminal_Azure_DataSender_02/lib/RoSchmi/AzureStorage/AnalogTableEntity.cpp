@@ -16,14 +16,11 @@
             Properties = pProperties;    // store the ArrayList
 
             PropertyCount = propertyCount;
-
-           // SampleTime = az_span_create_from_str(pProperties[0].Value);
-                          
+        
             PropertyClass myProperties;           
             myProperties.PartitionKey = partitionKey;           
             myProperties.RowKey = rowKey;
-            
-            //myProperties.SampleTime = az_span_create_from_str(pProperties[0].Value);
+              
             myProperties.SampleTime = SampleTime;
             myProperties.T_1 = az_span_create_from_str(pProperties[1].Value);
             myProperties.T_2 = az_span_create_from_str(pProperties[2].Value);

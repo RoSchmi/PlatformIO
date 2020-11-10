@@ -27,7 +27,7 @@
 
 #define TRANSPORT_PROTOCOL 1     // 0 = http, 1 = https
 
-#define SENDINTERVAL_MINUTES 0.5        // Sendinterval in minutes                                       
+#define SENDINTERVAL_MINUTES 2.0       // Sendinterval in minutes                                       
                                         // is limited to be not below 1 second
 
 #define INVALIDATEINTERVAL_MINUTES 10   // Invalidateinterval in minutes
@@ -36,6 +36,10 @@
 #define MIN_DATAVALUE -40.0             // Values below are treated as invalid
 #define MAX_DATAVALUE 140.0             // Values above are treated as invalid
 #define MAGIC_NUMBER_INVALID 999.9      // Invalid values are replaced with this value
+
+
+#define USE_SIMULATED_SENSORVALUES      // Activates simulated sensor values (sinus curve)
+
 
 const char *baltimore_root_ca =
 "-----BEGIN CERTIFICATE-----\n"

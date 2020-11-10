@@ -432,10 +432,27 @@ az_span_copy_u8(remainder, 0);
 
   az_result const entity_upload_result
       = az_storage_tables_upload(&tabClient, content_to_upload, az_span_create_from_str(md5Buffer), az_span_create_from_str((char *)authorizationHeaderBuffer), az_span_create_from_str((char *)x_ms_timestamp), &uploadOptions, &http_response);
-
+    
     az_http_response_status_line statusLine;
 
     az_result result = az_http_response_get_status_line(&http_response, &statusLine);    
+
+    az_span etag = AZ_SPAN_FROM_STR("ETag");
+    char keyBuf[20] {0};
+    az_span headerKey = AZ_SPAN_FROM_BUFFER(keyBuf);
+    char valueBuf[50] {0};
+    az_span headerValue = AZ_SPAN_FROM_BUFFER(valueBuf);
+    
+    for (int i = 0; i < 5; i++)
+    {
+      az_result headerResult = az_http_response_get_next_header(&http_response, &headerKey, &headerValue);
+      if (az_span_is_content_equal(headerKey, etag))
+      {
+        break;
+      }
+    }
+
+    
     return statusLine.status_code; 
 }      
 

@@ -1,13 +1,10 @@
 #include <Arduino.h>
 #include <Datetime.h>
 
-
 #ifndef _DATACONTAINERWIO_H_
 #define _DATACONTAINERWIO_H_
 
 #define PROPERTY_COUNT 4
-//#define MAX_VALUE 140
-//#define MIN_VALUE -40
 
 typedef struct
 {
@@ -29,16 +26,18 @@ class DataContainerWio
 public:
     
     DataContainerWio(TimeSpan pSendInterval, TimeSpan pInvalidateInterval, float pLowerLimit, float pUpperLimit, float pMagicNumberInvalid); 
-    //~DataContainerWio();
-
+    
+    String floToStr(float value);
+    SampleValue checkedSampleValue(SampleValue inSampleValue, float lowLimit, float upperLimit, float invalidSubstitute,  DateTime actDateTime, TimeSpan invalidateTime);
     void SetNewValue(uint32_t pIndex, DateTime pActDateTime, float pSampleValue);
-    SampleValueSet getSampleValuesAndReset(DateTime pActDateTime);
+    SampleValueSet getCheckedSampleValues(DateTime pActDateTime);
+    SampleValueSet getSampleValues(DateTime pActDateTime);
     bool hasToBeSent();
     void setLowerLimit(float pLowerLimit);
     void setUpperLimit(float pUpperLimit);
     void setMagigNumberInvalid(float pMagicNumberInvalid);
 
-    bool isFirstTransmission = true;
+    bool _isFirstTransmission = true;
 
     TimeSpan SendInterval;
     TimeSpan InvalidateInterval;
@@ -52,6 +51,5 @@ public:
     SampleValue SampleValues[PROPERTY_COUNT];
     SampleValueSet _SampleValuesSet;
 };
-
 
 #endif  // _DATACONTAINERWIO_H_

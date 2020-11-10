@@ -6,7 +6,6 @@
 
 class AnalogTableEntity : public TableEntity
 {
-
     public:
         AnalogTableEntity();
         AnalogTableEntity(az_span partitionKey, az_span rowKey, az_span sampleTime, EntityProperty[], size_t PropertyCount);

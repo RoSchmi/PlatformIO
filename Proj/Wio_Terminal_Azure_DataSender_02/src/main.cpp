@@ -93,7 +93,7 @@ int current_text_line = 0;
 #define LCD_LINE_HEIGHT 18
 
 uint32_t loopCounter = 0;
-uint32_t insertCounter = 0;
+unsigned int insertCounter = 0;
 
 bool ledState = false;
 char strData[100];
@@ -139,6 +139,8 @@ void lcd_log_line(char* line) {
 }
 
 // forward declarations
+String floToStr(float value);
+float ReadAnalogSensor(int pAin);
 DateTime actualizeSysTimeFromNtpIfNeeded();
 void createSampleTime(DateTime dateTimeUTCNow, int timeZoneOffsetUTC, char * sampleTime);
 az_http_status_code  createTable(CloudStorageAccount * myCloudStorageAccountPtr, X509Certificate myX509Certificate, const char * tableName);
@@ -298,11 +300,7 @@ void setup()
 
 void loop() 
 {
-  // Actualize Systemtime from ntp if update interval has expired
-    // If exact datetime is critical, take the actualization outside the if loop
-    //DateTime dateTimeUTCNow = actualizeSysTimeFromNtpIfNeeded();
-
-if (loopCounter++ % 2000 == 0)    //Blink LED every 2000 th round to signal that App is running
+  if (loopCounter++ % 2000 == 0)    //Blink LED every 2000 th round to signal that App is running
   {
     ledState = !ledState;
     digitalWrite(LED_BUILTIN, ledState);
@@ -314,44 +312,40 @@ if (loopCounter++ % 2000 == 0)    //Blink LED every 2000 th round to signal that
     // delay(20000);   // Outcommented! Only for test provokes a watchdog reboot
   }
 
-  dataContainer.SetNewValue(0, dateTimeUTCNow, 17.2);
-  dataContainer.SetNewValue(1, dateTimeUTCNow, 17.3);
-  dataContainer.SetNewValue(2, dateTimeUTCNow, 17.4);
-  dataContainer.SetNewValue(3, dateTimeUTCNow, 17.5);
+  dataContainer.SetNewValue(0, dateTimeUTCNow, ReadAnalogSensor(0));
+  dataContainer.SetNewValue(1, dateTimeUTCNow, ReadAnalogSensor(1));
+  dataContainer.SetNewValue(2, dateTimeUTCNow, ReadAnalogSensor(2));
+  dataContainer.SetNewValue(3, dateTimeUTCNow, ReadAnalogSensor(3));
 
-  
-  
   if (dataContainer.hasToBeSent())
   {
-    SampleValueSet sampleValueSet = dataContainer.getSampleValuesAndReset(dateTimeUTCNow);
+    // Retrieve edited sample values from container
+    SampleValueSet sampleValueSet = dataContainer.getCheckedSampleValues(dateTimeUTCNow);
 
-    // Create time value to be stored in table rows (local time and offset to UTC) 
+    // Create time value to be stored in each table row (local time and offset to UTC) 
     int timeZoneOffsetUTC = ntp.isDST() ? TIMEZONE + DSTOFFSET : TIMEZONE;
     char sampleTime[25] {0};
     createSampleTime(sampleValueSet.LastSendTime, timeZoneOffsetUTC, (char *)sampleTime);
 
-    // Create name of the table (arbitrary name + actual year, like: AnalogTestValues2020)
+    // Define name of the table (arbitrary name + actual year, like: AnalogTestValues2020)
     String tableName = "AnalogTestValues";  
     if (augmentTableNameWithYear)
     {
       tableName += (dateTimeUTCNow.year() - 30);     
     }
 
-    // Define 4 sample values to be stored in a table row
-    char * sampleValue_1 = (char *)"17.1";
-    char * sampleValue_2 = (char *)"17.2";
-    char * sampleValue_3 = (char *)"17.3";
-    char * sampleValue_4 = (char *)"17.4";
+    // Create an Array of here 5 Properties
+    // Each Property consists of the Name, the Value and the Type (here only Edm.String is supported)
 
-    // Besides PartitionKey and RowKey We have 5 properties to be stored in a row
-    // (SampleTime and 4 Samplevalues)
+    // Besides PartitionKey and RowKey we have 5 properties to be stored in a table row
+    // (SampleTime and 4 samplevalues)
     size_t propertyCount = 5;
     EntityProperty AnalogPropertiesArray[5];
     AnalogPropertiesArray[0] = (EntityProperty)TableEntityProperty((char *)"SampleTime", (char *) sampleTime, (char *)"Edm.String");
-    AnalogPropertiesArray[1] = (EntityProperty)TableEntityProperty((char *)"T_1", sampleValue_1, (char *)"Edm.String");
-    AnalogPropertiesArray[2] = (EntityProperty)TableEntityProperty((char *)"T_2", sampleValue_2, (char *)"Edm.String");
-    AnalogPropertiesArray[3] = (EntityProperty)TableEntityProperty((char *)"T_3", sampleValue_3, (char *)"Edm.String");
-    AnalogPropertiesArray[4] = (EntityProperty)TableEntityProperty((char *)"T_4", sampleValue_4, (char *)"Edm.String");
+    AnalogPropertiesArray[1] = (EntityProperty)TableEntityProperty((char *)"T_1", (char *)floToStr(sampleValueSet.SampleValues[0].Value).c_str(), (char *)"Edm.String");
+    AnalogPropertiesArray[2] = (EntityProperty)TableEntityProperty((char *)"T_2", (char *)floToStr(sampleValueSet.SampleValues[1].Value).c_str(), (char *)"Edm.String");
+    AnalogPropertiesArray[3] = (EntityProperty)TableEntityProperty((char *)"T_3", (char *)floToStr(sampleValueSet.SampleValues[2].Value).c_str(), (char *)"Edm.String");
+    AnalogPropertiesArray[4] = (EntityProperty)TableEntityProperty((char *)"T_4", (char *)floToStr(sampleValueSet.SampleValues[3].Value).c_str(), (char *)"Edm.String");
   
     // Create the PartitionKey (special format)
     char partKeySpan[25] {0};
@@ -367,22 +361,96 @@ if (loopCounter++ % 2000 == 0)    //Blink LED every 2000 th round to signal that
     makeRowKey(dateTimeUTCNow, rowKey, &rowKeyLength);
     rowKey = az_span_slice(rowKey, 0, rowKeyLength);
   
-    // Create TableEntity consisting of the above created incrediants
+    // Create TableEntity consisting of PartitionKey, RowKey and the properties named 'SampleTime', 'T_1', 'T_2', 'T_3' and 'T_4'
     AnalogTableEntity analogTableEntity(partitionKey, rowKey, az_span_create_from_str((char *)sampleTime),  AnalogPropertiesArray, propertyCount);
-    char EtagBuffer[5] {0};
-  
+    
+    
+    
+    // Print message on display
     sprintf(strData, "   Trying to insert %u", insertCounter);   
     lcd_log_line(strData);
-
+    
+    // Keep track of tries to insert
     insertCounter++;
-    // Store Entity to Azure Cloud
-    az_http_status_code insertResult = insertTableEntity(myCloudStorageAccountPtr, myX509Certificate, (char *)tableName.c_str(), analogTableEntity, (char *)EtagBuffer);
 
-  
+    char EtagBuffer[20] {0};
+    // Store Entity to Azure Cloud   
+    az_http_status_code insertResult = insertTableEntity(myCloudStorageAccountPtr, myX509Certificate, (char *)tableName.c_str(), analogTableEntity, (char *)EtagBuffer); 
   }
-  
+
   loopCounter++;
 }
+
+String floToStr(float value)
+{
+  char buf[10];
+  sprintf(buf, "%.1f", (roundf(value * 10.0))/10.0);
+  return String(buf);
+}
+
+float ReadAnalogSensor(int pAin)
+{
+#ifndef USE_SIMULATED_SENSORVALUES
+            // Use values read from an analog source
+            // Change the function for each sensor to your needs
+
+            double theRead = MAGIC_NUMBER_INVALID;
+            switch (pAin)
+            {
+                case 0:
+                    {
+                        theRead = 0.10;
+                        //theRead = analog0.ReadRatio();
+                    }
+                    break;
+
+                case 1:
+                    {
+                        theRead = 180.20;
+                        //theRead = analog1.ReadRatio();
+                    }
+                    break;
+                case 2:
+                    {
+                        theRead = -0.30;
+                        //theRead = analog2.ReadRatio();
+                    }
+                    break;
+                case 3:
+                    {
+                        theRead = -65.40;
+                        //theRead = analog3.ReadRatio();
+                    }
+                    break;
+            }
+
+            return theRead ;
+#endif
+
+#ifdef USE_SIMULATED_SENSORVALUES
+            // Only as an example we here return values which draw a sinus curve
+            // Console.WriteLine("entering Read analog sensor");
+            int frequDeterminer = 4;
+            int y_offset = 1;
+            // different frequency and y_offset for aIn_0 to aIn_3
+            if (pAin == 0)
+            { frequDeterminer = 4; y_offset = 1; }
+            if (pAin == 1)
+            { frequDeterminer = 8; y_offset = 10; }
+            if (pAin == 2)
+            { frequDeterminer = 12; y_offset = 20; }
+            if (pAin == 3)
+            { frequDeterminer = 16; y_offset = 30; }
+             
+            int secondsOnDayElapsed = dateTimeUTCNow.second() + dateTimeUTCNow.minute() * 60 + dateTimeUTCNow.hour() *60 *60;
+                    
+            return roundf((float)25.0 * (float)sin(PI / 2.0 + (secondsOnDayElapsed * ((frequDeterminer * PI) / (float)86400)))) / 10  + y_offset;          
+
+            #endif
+}
+
+
+
 
 DateTime actualizeSysTimeFromNtpIfNeeded()
 {
@@ -457,7 +525,7 @@ az_http_status_code insertTableEntity(CloudStorageAccount *pAccountPtr, X509Cert
   {
     sprintf(codeString, "%s %i", "Insertion failed: ", az_http_status_code(statusCode));    
     lcd_log_line((char *)codeString);
-    delay(70000);
+    delay(5000);
   }
 }
 
