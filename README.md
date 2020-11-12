@@ -44,3 +44,7 @@ Shows secure (https) GET request using the arduino-esp32 HTTPClient
 
 Shows how to transfere sensor data to Azure Storage Tables. App running on the Wio Terminal developed on PlatformIO using Arduino Code, Microsoft Azure C SDK and espressif arduino-esp32 HTTPClient. This is still work in progress, creating tables and inserting Entities is already working.
 
+### Wio_Terminal_Get_GitHub_Example
+Modified example from Seeed: Getting Data from GitHub.
+This example uses the new Seeed eRPCWiFi library
+
