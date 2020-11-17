@@ -116,7 +116,7 @@ void setup() {
     tft.setTextColor(TFT_BLACK);
 
     pinMode(LED_BUILTIN, OUTPUT);
-    lcd_log_line((char *)"Starting Up");
+    lcd_log_line((char *)"Starting");
   
     //Initialize serial and wait for port to open:
     Serial.begin(115200);
@@ -127,33 +127,49 @@ void setup() {
     Serial.print("Attempting to connect to SSID: ");
     Serial.println(ssid);
 
-    char buf[42];
+    char buf[100];
+    lcd_log_line((char *)"Initial WiFi-Status:");
+    lcd_log_line(itoa((int)WiFi.status(), buf, 10));
+    
+    delay(2000);
+    //Set WiFi to station mode and disconnect from an AP if it was previously connected
+    WiFi.mode(WIFI_STA);
+    WiFi.disconnect();
+    delay(100);
+    lcd_log_line((char *)"First disconnecting, Status:");
+    lcd_log_line(itoa((int)WiFi.status(), buf, 10));
+    
     sprintf(buf, "Connecting to SSID: %s", ssid);
     lcd_log_line(buf);
-    
-    // Set WiFi to station mode and disconnect from an AP if it was previously connected
-    // WiFi.mode(WIFI_STA);
-    // WiFi.disconnect();
-    // delay(100);
-    
-    WiFi.begin(ssid, password);
 
-    // attempt to connect to Wifi network:
-    while (WiFi.status() != WL_CONNECTED) {     
-        lcd_log_line((char *)".");
-        lcd_log_line(itoa((int)WiFi.status(), buf, 10));        
-        // wait 1 second for re-trying
+    if (!ssid || *ssid == 0x00 || strlen(ssid) > 31)
+    {
+      // Stay in endless loop
+        lcd_log_line((char *)"Invalid: SSID or PWD");
         delay(1000);
     }
-  
-    //WiFi.config(WiFi.localIP(), WiFi.gatewayIP(), WiFi.subnetMask(), WiFi.gatewayIP(), WiFi.gatewayIP());
 
+    WiFi.begin(ssid, password);
+    
+    if (!WiFi.enableSTA(true))
+    {
+      while (true)
+      {
+        // Stay in endless loop
+        lcd_log_line((char *)"Connect failed.");
+        delay(1000);
+      }
+    }
+    
+    lcd_log_line((char *)"Connected, new Status:");
+    lcd_log_line(itoa((int)WiFi.status(), buf, 10));
+    
     IPAddress localIpAddress = WiFi.localIP();
     IPAddress gatewayIp =  WiFi.gatewayIP();
     IPAddress subNetMask =  WiFi.subnetMask();
-    IPAddress dnsServerIp = WiFi.dnsIP();
+    IPAddress dnsServerIp = WiFi.dnsIP(1);
 
-    delay(1000);
+    delay(3000);
     current_text_line = 0;
     tft.fillScreen(TFT_WHITE);
     
@@ -168,8 +184,8 @@ void setup() {
     lcd_log_line(buf);
   
    
-  //wifi_client.setCACert(baltimore_root_ca);
- 
+    delay(10000);
+  
     Serial.print("Connected to ");
     Serial.println(ssid);
  
