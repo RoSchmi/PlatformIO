@@ -40,6 +40,9 @@
 !/Wio_Terminal_Azure_DataSender_02/
 !/Wio_Terminal_Azure_DataSender_02/**
 
+!/Wio_Terminal_Seeed_Ntp/
+!/Wio_Terminal_Seeed_Ntp/**
+
 !/Wio_Terminal_RTC_Example/
 !/Wio_Terminal_RTC_Example/**
 
