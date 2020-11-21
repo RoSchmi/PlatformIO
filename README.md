@@ -33,22 +33,22 @@ More features of the BrainPad are actually not explored.
 Example shows and explains how I got debugging with JLink on Seeed Wio Terminal working.
 There were some hacks needed to get it working
 
-### Wio_Terminal_Seeed_Https_Example
+### Wio_Terminal_Seeed_Https_Example (using atWiFi library)
 This is the example 'Reading Github Repositoy Stats from Wio Terminal' by Seeed Studio with minor modifications. It shows how to access internet resource via https protocol.
 
 ### Wio_Terminal_Https_Get_Request
 Shows secure (https) GET request using the arduino-esp32 HTTPClient
 (Origninally posted for esp32 devices: https://techtutorialsx.com/2017/11/18/esp32-arduino-https-get-request )
 
-### Wio_Terminal_Azure_DataSender_02
+### Wio_Terminal_Azure_DataSender_02 (atWiFi library)
 
 Shows how to transfere sensor data to Azure Storage Tables. App running on the Wio Terminal developed on PlatformIO using Arduino Code, Microsoft Azure C SDK and espressif arduino-esp32 HTTPClient. This is still work in progress, creating tables and inserting Entities is already working.
 
-### Wio_Terminal_Get_GitHub_Example
+### Wio_Terminal_Get_GitHub_Example (rpcWiFi library)
 Modified example from Seeed: Getting Data from GitHub.
 This example uses the new Seeed eRPCWiFi library
 
 ### Wio_Terminal_Seeed_Ntp
-This is a modification of the Seeed NTP example.
+This is a modification of the Seeed NTP example. (rpcWiFi library)
 https://wiki.seeedstudio.com/Wio-Terminal-Wi-Fi/#wi-fi-ntp-example-code
 
