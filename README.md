@@ -48,3 +48,7 @@ Shows how to transfere sensor data to Azure Storage Tables. App running on the W
 Modified example from Seeed: Getting Data from GitHub.
 This example uses the new Seeed eRPCWiFi library
 
+### Wio_Terminal_Seeed_Ntp
+This is a modification of the Seeed NTP example.
+https://wiki.seeedstudio.com/Wio-Terminal-Wi-Fi/#wi-fi-ntp-example-code
+
