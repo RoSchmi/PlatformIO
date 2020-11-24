@@ -1,0 +1,34 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "PlatformIO",
+			"task": "Build (seeed_wio_terminal)",
+			"problemMatcher": [
+				"$platformio"
+			],
+			"group": "build",
+			"label": "PlatformIO: Build (seeed_wio_terminal)"
+		},
+		{
+			"type": "PlatformIO",
+			"task": "Verbose Build",
+			"problemMatcher": [
+				"$platformio"
+			],
+			"label": "PlatformIO: Verbose Build",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+		{
+			"type": "PlatformIO",
+			"task": "Verbose Build (seeed_wio_terminal)",
+			"problemMatcher": [
+				"$platformio"
+			],
+			"label": "PlatformIO: Verbose Build (seeed_wio_terminal)"
+		}
+	]
+}
