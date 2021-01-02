@@ -52,3 +52,7 @@ This example uses the new Seeed eRPCWiFi library
 This is a modification of the Seeed NTP example. (rpcWiFi library)
 https://wiki.seeedstudio.com/Wio-Terminal-Wi-Fi/#wi-fi-ntp-example-code
 
+### Wio_Terminal_SamCrashMonitorTest
+This is a modification of https://github.com/cyrusbuilt/SAMCrashMonitor
+for Wio Terminal and PlatformIo
+
