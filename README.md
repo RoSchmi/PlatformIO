@@ -56,3 +56,7 @@ https://wiki.seeedstudio.com/Wio-Terminal-Wi-Fi/#wi-fi-ntp-example-code
 This is a modification of https://github.com/cyrusbuilt/SAMCrashMonitor
 for Wio Terminal and PlatformIo
 
+### Wio_Terminal_Check_Memory_Leaks
+For personal use. Same examples for allocating and check for memory leaks in C/C++
+
+
