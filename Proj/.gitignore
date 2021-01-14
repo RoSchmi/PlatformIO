@@ -52,6 +52,9 @@
 !/Wio_Terminal_SamCrashMonitorTest/
 !/Wio_Terminal_SamCrashMonitorTest/**
 
+!/Wio_Terminal_Check_Memory_Leaks/
+!/Wio_Terminal_Check_Memory_Leaks/**
+
 
 
 
