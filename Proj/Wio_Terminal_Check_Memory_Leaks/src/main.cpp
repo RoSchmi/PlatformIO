@@ -1,3 +1,39 @@
+// Some simple samples for my own use, showing allocating and check for memory leaks
+
+// Some important data about the ram usage can be seen in this directory on your PC:
+// user\.platformio\packages\framework-arduino-samd-seeed\variants\wio_terminal\linker_scripts\gcc
+
+/* Linker script to place sections and symbol values. Should be used together
+ * with other linker script that defines memory regions FLASH and RAM.
+ * It references following symbols, which must be defined in code:
+ *   Reset_Handler : Entry of reset handler
+ *
+ * It defines following symbols, which code can use without definition:
+ *   __exidx_start
+ *   __exidx_end
+ *   __copy_table_start__
+ *   __copy_table_end__
+ *   __zero_table_start__
+ *   __zero_table_end__
+ *   __etext
+ *   __data_start__
+ *   __preinit_array_start
+ *   __preinit_array_end
+ *   __init_array_start
+ *   __init_array_end
+ *   __fini_array_start
+ *   __fini_array_end
+ *   __data_end__
+ *   __bss_start__
+ *   __bss_end__
+ *   __end__
+ *   end
+ *   __HeapLimit
+ *   __StackLimit
+ *   __StackTop
+ *   __stack
+ */
+
 #include <Arduino.h>
 #include <rpcWiFi.h>
 #include "TFT_eSPI.h"
@@ -125,19 +161,7 @@ void loop() {
     current_text_line = 0;
     tft.fillScreen(TFT_WHITE);
   }
-  /*
-   ptr_three = (uint32_t *)pvPortMalloc(0x10);
-   sprintf(buf, "1) Allocated at: %10X", (unsigned int)ptr_three);
-   lcd_log_line(buf);
-    char charArr1[100]{0};
-    strcpy(charArr1, "Monika");
-    strcpy((char*)ptr_three, (char *)charArr1); 
-    ptr_three = (uint32_t *)pvPortMalloc(0x10);
-   sprintf(buf, "1) Allocated at: %10X", (unsigned int)ptr_three);
-   lcd_log_line(buf);
-   */
-
-
+  
    ptr_three = (uint32_t *)malloc(0x20);
    sprintf(buf, "2) Allocated at: %10X", (unsigned int)ptr_three);
    lcd_log_line(buf);
