@@ -55,6 +55,8 @@
 !/Wio_Terminal_Check_Memory_Leaks/
 !/Wio_Terminal_Check_Memory_Leaks/**
 
+!/Wio_Terminal_IoT_TempHumidity_Display/
+!/Wio_Terminal_IoT_TempHumidity_Display/**
 
 
 
