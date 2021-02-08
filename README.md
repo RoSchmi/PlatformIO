@@ -59,4 +59,8 @@ for Wio Terminal and PlatformIo
 ### Wio_Terminal_Check_Memory_Leaks
 For personal use. Same examples for allocating and check for memory leaks in C/C++
 
+### Wio_Terminal_IoT_TempHumidity_Display
+
+Uploud Temperature/Humidity data from Wio terminal to the Cloud and display on SinricPro APP.
+
 
