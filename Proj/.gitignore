@@ -58,8 +58,8 @@
 !/Wio_Terminal_IoT_TempHumidity_Display/
 !/Wio_Terminal_IoT_TempHumidity_Display/**
 
-
-
+!/Wio_Terminal_M5Stack_ENV_Hat_Test/
+!/Wio_Terminal_M5Stack_ENV_Hat_Test/**
 
 
 

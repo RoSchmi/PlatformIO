@@ -60,7 +60,9 @@ for Wio Terminal and PlatformIo
 For personal use. Same examples for allocating and check for memory leaks in C/C++
 
 ### Wio_Terminal_IoT_TempHumidity_Display
-
 Uploud Temperature/Humidity data from Wio terminal to the Cloud and display on SinricPro APP.
+
+### Wio_Terminal_M5Stack_ENV_Hat_Test
+Example for Wio Terminal: Shows how to read all sensores of M5Stack ENV II Hat (temperature, humidity, atmospheric pressure and magnetic field)
 
 
