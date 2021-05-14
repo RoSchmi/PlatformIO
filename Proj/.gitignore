@@ -61,6 +61,11 @@
 !/Wio_Terminal_M5Stack_ENV_Hat_Test/
 !/Wio_Terminal_M5Stack_ENV_Hat_Test/**
 
+!/Wio_Terminal_Timerinterrupt_Test/
+!/Wio_Terminal_Timerinterrupt_Test/**
+
+!/Wio_Terminal_Microphone_Test_01/
+!/Wio_Terminal_Microphone_Test_01/**
 
 
 

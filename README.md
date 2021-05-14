@@ -65,4 +65,10 @@ Uploud Temperature/Humidity data from Wio terminal to the Cloud and display on S
 ### Wio_Terminal_M5Stack_ENV_Hat_Test
 Example for Wio Terminal: Shows how to read all sensores of M5Stack ENV II Hat (temperature, humidity, atmospheric pressure and magnetic field)
 
+### Wio_Terminal_Timerinterrupt_Test
+Example for Wio Terminal: https://github.com/khoih-prog/TimerInterrupt_Generic
+
+### Wio_Terminal_Microphone_Test_01
+Display sound level on a linechart
+Example from the Seeed WiKi: https://wiki.seeedstudio.com/Wio-Terminal-Mic/
 
