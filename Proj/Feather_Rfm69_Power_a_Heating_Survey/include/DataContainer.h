@@ -57,7 +57,7 @@ class DataContainer
         // constructor
         DataContainer(uint32_t pMaxSendInterval, TriggerDeviation pPercentDeviationPercent, TriggerDeviationAmps pDeviationAmpere);
 
-        void SetNewValues(uint32_t pActSampleTime, float pActCurrent, float pActPower, uint32_t pActImportWorkUint32);
+        void SetNewValues(uint32_t pActSampleTime, float pActCurrent, float pActPower, uint32_t pActImportWorkUint32, bool forceSend = false);
 
         bool hasToBeSent();
 

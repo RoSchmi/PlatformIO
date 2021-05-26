@@ -22,7 +22,7 @@ DataContainer::DataContainer(uint32_t pMaxSendInterval, TriggerDeviation pPercen
     isFirstTransmission = true;
 }
 
-void DataContainer::SetNewValues(uint32_t pActSampleTime, float pActCurrent, float pActPower, uint32_t pActImportWorkUint32)
+void DataContainer::SetNewValues(uint32_t pActSampleTime, float pActCurrent, float pActPower, uint32_t pActImportWorkUint32, bool forceSend)
 {
     if (isFirstTransmission)
     {
@@ -60,7 +60,7 @@ void DataContainer::SetNewValues(uint32_t pActSampleTime, float pActCurrent, flo
     }   
     ActSampleTime_Ms = pActSampleTime;
 
-    ActMeasuredCurrent = pActCurrent,
+    ActMeasuredCurrent = pActCurrent;
     ActMeasuredPower = pActPower;
     ActImportWorkUint32 = pActImportWorkUint32;
   
@@ -88,14 +88,28 @@ void DataContainer::SetNewValues(uint32_t pActSampleTime, float pActCurrent, flo
     //if (((int32_t)(ActSampleTime_Ms - LastSendTime_Ms) > (int32_t)AveragingTimespan_Ms) && 
     //   (abs(averageCurrentDiff)  > (LastAverageCurrent / 100 * (int16_t)PercentDeviationLevel)) || 
     //   (abs(averageCurrentDiff) > (((int16_t)AmpereDeviationLevel) * 0.1)))
-    if (((ActSampleTime_Ms - LastSendTime_Ms) > AveragingTimespan_Ms) && 
-       ((abs(averageCurrentDiff)  > (LastAverageCurrent / 100 * (int16_t)PercentDeviationLevel)) || 
-       (abs(averageCurrentDiff) > (((int16_t)AmpereDeviationLevel) * 0.1))))
 
+    if (forceSend)
     {
         LastAverageCurrent = ActAverageCurrent;
         LastAveragePower = ActAveragePower;
+
+        ActAverageCurrent = ActMeasuredCurrent;    // set ActAverage to actual values if 'forced'
+        ActAveragePower = ActMeasuredPower;
         _hasToBeSent = true;
+    }
+    else
+    {
+
+        if (((ActSampleTime_Ms - LastSendTime_Ms) > AveragingTimespan_Ms) && 
+            ((abs(averageCurrentDiff)  > (LastAverageCurrent / 100 * (int16_t)PercentDeviationLevel)) || 
+            (abs(averageCurrentDiff) > (((int16_t)AmpereDeviationLevel) * 0.1))))
+
+        {
+            LastAverageCurrent = ActAverageCurrent;
+            LastAveragePower = ActAveragePower;
+            _hasToBeSent = true;
+        }
     }
 }
 

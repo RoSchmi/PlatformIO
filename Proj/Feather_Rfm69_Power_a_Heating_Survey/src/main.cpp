@@ -1235,6 +1235,8 @@ unsigned long seed;
 int16_t packetnum;        // packet counter, we increment per xmission,
 bool firstPacket = true;  // flag to signal the first round after reboot
 
+bool refreshCurrentDataRequested = false;
+
 uint8_t _slaveSelectPin;
 uint8_t _interruptPin;
 uint8_t _interruptNum;
@@ -1301,6 +1303,9 @@ union Radiopackets
 };
 
 Radiopackets packets; 
+
+uint32_t setModeLoopCtr = 0;
+uint32_t rescueCounter = 0;
 
 // Forward declarations:
 uint8_t initialize(uint8_t freqBand, uint8_t nodeID, uint8_t networkID);
@@ -1515,9 +1520,7 @@ void setup()
 
   encrypt(ENCRYPTKEY);
   //encrypt(0);
-
-  
-  
+ 
 #ifdef DebugPrint
   Serial.print("\nTransmitting at ");
   Serial.print(FREQUENCY==RF69_433MHZ ? 433 : FREQUENCY==RF69_868MHZ ? 868 : 915);
@@ -1535,7 +1538,10 @@ void setup()
   //Serial.println("Simulate: initially Pump is on");  
   //#endif
   //*************************************************************************
+  
 
+  //RoSchmi
+  
   // actState and oldstate are set to 1 initially
   repeatSend = 0;
   while (!sendMessage(actState, oldState, repeatSend))
@@ -1556,6 +1562,7 @@ void setup()
      setMode(lastMode);            // Restore previous mode
      repeatSend++;
   }
+  
   repeatSend = 0;
 
   //Another blinky sequence to show progress of programm
@@ -1572,6 +1579,8 @@ void setup()
   // Initialize Watchdog
   MyWatchDoggy.attachShutdown(myshutdown);
   MyWatchDoggy.setup(WDT_HARDCYCLE16S);  // initialize WDT-softcounter refesh cycle on 16sec interval
+
+
   //MyWatchDoggy.setup(WDT_SOFTCYCLE32S);  // initialize WDT-softcounter refesh cycle on 32sec interval
 }
 
@@ -1580,7 +1589,7 @@ void loop()
   lastMode = _mode;
   setMode(RF69_MODE_STANDBY);  // Prevent the delay from beeing interrupted by interrupts from the radio, 
                                 //otherweise the delay never returns 
-  delay(500);  // Wait x seconds between transmits, could also 'sleep' here!
+  delay(5);  // Wait x seconds between transmits, could also 'sleep' here! (there is another delay later, so here very short)
   MyWatchDoggy.clear();
 
   if (skipCounter > 5)    //Blink LED every 5 th round to signal that App is running
@@ -1621,15 +1630,13 @@ void loop()
   #endif
   
   
-  //if (digitalRead(12) == 0)   // Pump is on 
   if (digitalRead(12) == LOW)   // Pump is on 
   {
     lastMode = _mode;
     setMode(RF69_MODE_STANDBY);
-    delay(150);
+    delay(100);
     setMode(lastMode);
     
-    //if (digitalRead(12) == 0)   // Pump is still on
     if (digitalRead(12) == LOW)   // Pump is still on
     {       
         if (oldState == 1)   // was off before
@@ -1666,14 +1673,12 @@ void loop()
           }                    
         }  
     }  
-  }
-   
-  else
-   
+  }   
+  else         // else: Pump is off 
   {   
     lastMode = _mode;
     setMode(RF69_MODE_STANDBY);
-    delay(150);
+    delay(100);
     setMode(lastMode);    
     //if (digitalRead(12) != 0) // Pump is still off
     if (digitalRead(12) == HIGH) // Pump is still off
@@ -1716,8 +1721,8 @@ void loop()
     }
   }
   
-
-
+  //RoSchmi
+  
   if (skipCounter > 5)       
   {
     skipCounter = 0;
@@ -1727,9 +1732,16 @@ void loop()
       #ifdef DebugPrint
         Serial.println("ERROR: .begin function not executed in Setup");
       #endif
-    }  
+    }
+    
     // Read 'Current' from the Smartmeter if its releaseTime has expired
-    if (readSummedCurrent.isReleased())
+
+    // RoSchminext 2 lines to delete
+    //dataContainer.SetNewValues(millis(), ActCurrent, ActPower, ActImportWork, true);
+    //dataContainer.SetNewValues(millis(), 555.0, 255.0, 6000.0, true);
+    //refreshCurrentDataRequested = false;
+
+    if (readSummedCurrent.isReleased() || refreshCurrentDataRequested)
     {
       regsRetStruct = readSummedCurrent.get_2_InputRegisters(u8addr, FollowReleaseTimespan_Current_Ms, ForceState::RespectReleaseTime);
       regsRetStruct_2 = readTotalPower.get_2_InputRegisters(u8addr, FollowReleaseTimespan_Power_Ms, ForceState::IgnoreReleaseTime);
@@ -1742,7 +1754,17 @@ void loop()
         {
           ActCurrent = resultStruct.value;
           ActPower = resultStruct_2.value;
-          dataContainer.SetNewValues(millis(), ActCurrent, ActPower, ActImportWork);
+
+          if (refreshCurrentDataRequested)   // if true, force send following this set of new values
+          {
+            dataContainer.SetNewValues(millis(), ActCurrent, ActPower, ActImportWork, true);
+            refreshCurrentDataRequested = false;
+          }
+          else
+          {
+            dataContainer.SetNewValues(millis(), ActCurrent, ActPower, ActImportWork, false);
+          }
+
           #ifdef DebugPrint
             Serial.println("  " + String(resultStruct.value, 4) + "  Amps");
             Serial.println("  " + String(resultStruct_2.value, 4) + "  Watt");
@@ -1772,7 +1794,13 @@ void loop()
           #endif
       }         
     }
+    
+    
+    // RoSchmi
+    //   ActImportWork = 6000.0;
+    
     // Read 'Work' from the Smartmeter if its releaseTime has expired
+    
     if (readImportWork.isReleased() || isForcedReadInputWork)
     {
       ForceState forceState = isForcedReadInputWork ? IgnoreReleaseTime : RespectReleaseTime;          
@@ -1809,7 +1837,8 @@ void loop()
         #endif           
       }
     }
-
+    
+    
     if (sendDataIsPending)
     {
       lastMode = _mode;
@@ -1863,6 +1892,8 @@ void loop()
           
         // Work is transmitted as two uint16_t values as higher and lower bytes in one uint32_t number
         volatile uint32_t intWork = ImpWorkLow | (ImpWorkHigh << 16);
+
+        refreshCurrentDataRequested = false;
           
         if (sendMessage(dataState, dataState, repeatSendData, sampleValues.EndTime_Ms - sampleValues.StartTime_Ms, intCurrent, intPower, intWork))
         {
@@ -1890,10 +1921,33 @@ void loop()
       Serial1.flush();       
   }
   skipCounter++;
-
-  receiveDone(); //put radio in RX mode
-  Serial.flush(); //make sure all serial data is clocked out before sleeping the MCU
   
+  // RoSchmi
+  if (receiveDone())    //put radio in RX mode
+  {}
+  
+  //digitalWrite(LED, LOW);
+
+  delay(500);                  // Time slot to receive commands
+
+  //digitalWrite(LED, HIGH);
+  
+  if (receiveDone())
+  {
+    if (strstr((char *)DATA, "RefreshCurrentData"))
+    {
+      #ifdef DebugPrint
+      Serial.println("RefreshCurrentData");
+      #endif
+
+      refreshCurrentDataRequested = true;
+      isForcedReadInputWork = true;
+    }
+  }
+  
+
+  Serial.flush(); //make sure all serial data is clocked out before sleeping the MCU
+ 
 }
 
 
@@ -2322,9 +2376,24 @@ bool receiveDone()
   //ATOMIC_BLOCK(ATOMIC_FORCEON)
   //{
   noInterrupts(); // re-enabled in unselect() via setMode() or via receiveBegin()
+
+  // RoSchmi
+  rescueCounter++;
+  if (rescueCounter > 500)
+  {
+      rescueCounter = 0;
+      //Serial.println("\r\nRescueCounter action occured\r\n");
+      receiveBegin();
+      return false;
+  }
+  
+
   if (_mode == RF69_MODE_RX && PAYLOADLEN > 0)
   {
+    // RoSchmi
+    // Serial.println("\r\nReceiveDone rets true\r\n");
     setMode(RF69_MODE_STANDBY); // enables interrupts
+    
     return true;
   }
   else if (_mode == RF69_MODE_RX) // already in RX no payload yet
@@ -2361,7 +2430,7 @@ void interruptHandler()
     //Serial.print("\n PayLodLength = ");Serial.println(PAYLOADLEN);
     PAYLOADLEN = PAYLOADLEN > 66 ? 66 : PAYLOADLEN; // precaution
     TARGETID = SPI.transfer(0);
-    //Serial.print("\n TargetID = ");Serial.println(TARGETID);
+    //Serial.print("\n TargetID = ");Serial.print(TARGETID);Serial.println(PAYLOADLEN);
     if(!(_promiscuousMode || TARGETID == _address || TARGETID == RF69_BROADCAST_ADDR) // match this node's address, or broadcast address or anything in promiscuous mode
        || PAYLOADLEN < 3) // address situation could receive packets that are malformed and don't fit this libraries extra fields
     {
@@ -2673,16 +2742,27 @@ void setHighPowerRegs(bool onOff) {
 void setMode(uint8_t newMode)
 {
   if (newMode == _mode)
-    return;
+  {
+    setModeLoopCtr++;
+    //Serial.println("SetMode and equal");
+    if ((setModeLoopCtr % 10) != 0 )    // every 10th iteration we do not return if the mode did not change but force setMode
+    {                            // this is to prevent hangs if the variable _mode is already falsely set to RX mode, but the RFM69 is not
+      return;
+    }
+  }
+
+    
   //Serial.println("Going to set new mode");
   switch (newMode) {
     case RF69_MODE_TX:
       writeReg(REG_OPMODE, (readReg(REG_OPMODE) & 0xE3) | RF_OPMODE_TRANSMITTER);
       if (_isRFM69HW) setHighPowerRegs(true);
+      //Serial.println("Set mode to TX");
       break;
     case RF69_MODE_RX:
       writeReg(REG_OPMODE, (readReg(REG_OPMODE) & 0xE3) | RF_OPMODE_RECEIVER);
       if (_isRFM69HW) setHighPowerRegs(false);
+      //Serial.println("Set mode to RX");
       break;
     case RF69_MODE_SYNTH:
       writeReg(REG_OPMODE, (readReg(REG_OPMODE) & 0xE3) | RF_OPMODE_SYNTHESIZER);
@@ -2693,6 +2773,7 @@ void setMode(uint8_t newMode)
       break;
     case RF69_MODE_SLEEP:
       writeReg(REG_OPMODE, (readReg(REG_OPMODE) & 0xE3) | RF_OPMODE_SLEEP);
+      Serial.println("Set mode to Sleep");
       break;
     default:
       return;
@@ -2701,7 +2782,7 @@ void setMode(uint8_t newMode)
   // we are using packet mode, so this check is not really needed
   // but waiting for mode ready is necessary when going from sleep because the FIFO may not be immediately available from previous mode
   while (_mode == RF69_MODE_SLEEP && (readReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00); // wait for ModeReady
-
+   //Serial.println("Changed to new mode");
   _mode = newMode;
 }
 void myshutdown()
