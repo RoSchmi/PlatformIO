@@ -1,4 +1,6 @@
 # Feather_Rfm69_Power_a_Heating_Survey
+( Further changes of this program shall not be made here, but in the repository:
+https://github.com/RoSchmi/Feather_Rfm69_Power_a_Heating_Survey )  
 
 Reads data (Current, Power, Work) from a Eastron SDM530-MT Smartmeter and the On/Off state of a pump
 and transmits these data via Rfm69 radio transmission to an Internet Gateway (GHI FEZ Spider Board)
